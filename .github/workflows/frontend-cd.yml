@@ -5,12 +5,12 @@ name: Frontend CD
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - .github/workflows/frontend-cd.yml
       - frontend/**
   pull_request:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
