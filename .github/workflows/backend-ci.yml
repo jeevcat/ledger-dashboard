@@ -1,0 +1,32 @@
+name: Backend CD
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/rust.yml
+      - dashboard/backend/**
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1
+        with:
+          # Change CACHE_VERSION to clear cache
+          key: ${{ secrets.CACHE_VERSION }}
+          working-directory: dashboard/backend
+      - name: Build
+        run: cargo build --verbose --release
+        working-directory: dashboard/backend
+      - name: Run tests
+        run: cargo test --verbose --release
+        working-directory: dashboard/backend
