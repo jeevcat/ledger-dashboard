@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/rust.yml
-      - dashboard/backend/**
+      - backend/**
   pull_request:
     branches: [main]
   workflow_dispatch:
