@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM rust:1.49 as build
+FROM rust:1.50 as build
 ENV PKG_CONFIG_ALLOW_CROSS=1
 
 # Get hledger version 1.20.4
