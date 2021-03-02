@@ -52,6 +52,7 @@ mod tests {
     use super::Ib;
 
     #[test]
+    #[ignore]
     fn example() {
         let report = Ib::read_report();
         println!("{:#?}", report);
