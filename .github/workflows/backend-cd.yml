@@ -31,6 +31,6 @@ jobs:
         uses: docker/build-push-action@v2.2.2
         with:
           context: backend
-          tags: jeevcat/ledger-dashboard/backend:latest
+          tags: jeevcat/ledger-dash-backend:latest
           pull: true
           push: true
