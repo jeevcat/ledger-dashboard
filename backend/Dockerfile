@@ -31,7 +31,8 @@ ENV LC_ALL en_US.UTF-8
 
 COPY --from=build /usr/bin/hledger /usr/local/bin
 COPY --from=build /usr/local/cargo/bin/backend /usr/local/bin/backend
-COPY --from=build /usr/src/backend/currencies.json /data
-COPY --from=build /usr/src/backend/cryptocurrencies.json /data
+# TODO where should we usually copy data files?
+COPY --from=build /usr/src/backend/currencies.json /usr/local/bin
+COPY --from=build /usr/src/backend/cryptocurrencies.json /usr/local/bin
 
 CMD ["backend"]
