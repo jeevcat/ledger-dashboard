@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/rust.yml
+      - .github/workflows/backend-ci.yml
       - backend/**
   pull_request:
     branches: [main]
