@@ -19,6 +19,10 @@ RUN cargo install --path .
 
 # Stage 2: Production
 FROM debian:buster-slim
+
+# needed for hledger
+ENV LANG=en_US.UTF-8
+
 RUN apt-get update && apt-get install -y libtinfo-dev libtinfo5 libssl1.1 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/bin/hledger /usr/local/bin
