@@ -12,10 +12,6 @@ pub fn get_prices_file() -> Option<PathBuf> {
     Some(get_journal_path()?.join("prices.ledger"))
 }
 
-pub fn get_backend_file(filename: &str) -> Option<PathBuf> {
-    Some(get_backend_path()?.join(filename))
-}
-
 pub fn get_database_file(filename: &str) -> Option<PathBuf> {
     Some(get_database_path()?.join(filename))
 }

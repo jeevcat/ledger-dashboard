@@ -1,14 +1,6 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-    fs::{self, File},
-    io,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{self, File}, io, str::FromStr, sync::Arc};
 
 use chrono::NaiveDate;
-use file_utils::get_backend_file;
 use io::BufRead;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -73,10 +65,12 @@ pub struct Prices {
 
 impl Prices {
     pub fn new(alpha_vantage: Arc<AlphaVantage>) -> Self {
+        let currencies_json = include_str!("currencies.json");
+        let cryptocurrencies_json = include_str!("cryptocurrencies.json");
         Self {
             alpha_vantage,
-            currencies: Self::load_currencies_from_disk("currencies.json"),
-            cryptocurrencies: Self::load_currencies_from_disk("cryptocurrencies.json"),
+            currencies: Self::load_currencies_from_disk(currencies_json),
+            cryptocurrencies: Self::load_currencies_from_disk(cryptocurrencies_json),
         }
     }
 
@@ -126,12 +120,9 @@ impl Prices {
         fs::write(filename, prices_string)
     }
 
-    fn load_currencies_from_disk(filename: &str) -> HashSet<String> {
-        let path = || get_backend_file(filename).unwrap();
-        let json_file = File::open(path())
-            .unwrap_or_else(|_| panic!("{} not found at {:#?}", filename, path()));
-        let currencies: HashMap<String, String> = serde_json::from_reader(json_file)
-            .unwrap_or_else(|_| panic!("Coudn't deserialize {}", filename));
+    fn load_currencies_from_disk(json: &str) -> HashSet<String> {
+        let currencies: HashMap<String, String> = serde_json::from_str(json)
+            .unwrap_or_else(|_| panic!("Coudn't deserialize {}", json));
         currencies.into_iter().map(|(c, _)| c).collect()
     }
 
