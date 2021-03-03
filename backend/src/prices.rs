@@ -127,8 +127,9 @@ impl Prices {
     }
 
     fn load_currencies_from_disk(filename: &str) -> HashSet<String> {
-        let json_file = File::open(get_backend_file(filename).unwrap())
-            .unwrap_or_else(|_| panic!("{} not found", filename));
+        let path = || get_backend_file(filename).unwrap();
+        let json_file = File::open(path())
+            .unwrap_or_else(|_| panic!("{} not found at {:#?}", filename, path()));
         let currencies: HashMap<String, String> = serde_json::from_reader(json_file)
             .unwrap_or_else(|_| panic!("Coudn't deserialize {}", filename));
         currencies.into_iter().map(|(c, _)| c).collect()
