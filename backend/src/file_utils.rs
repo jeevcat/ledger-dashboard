@@ -1,5 +1,7 @@
 use std::{env, path::PathBuf};
 
+use log::info;
+
 use crate::config;
 
 pub fn get_imported_ledger_file() -> Option<PathBuf> {
@@ -21,6 +23,7 @@ pub fn get_database_file(filename: &str) -> Option<PathBuf> {
 fn get_backend_path() -> Option<PathBuf> {
     // Support for running inside cargo directory structure
     if let Some(cargo_project_root) = option_env!("CARGO_MANIFEST_DIR") {
+        info!("We in running inside cargo: {}", cargo_project_root);
         return Some(PathBuf::from(cargo_project_root));
     }
     // Default to exe directory
