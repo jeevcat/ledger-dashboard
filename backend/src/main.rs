@@ -22,6 +22,9 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 
+    // Find openssl certificates on the system
+    openssl_probe::init_ssl_cert_env_vars();
+
     let db = Arc::new(db::Database::new());
     let n26 = Arc::new(n26::N26::new(db.clone()));
 
