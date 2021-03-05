@@ -256,7 +256,7 @@ async fn initiate_authentication_flow(
     if response.status() != 403 {
         panic!(
             "Unexpected response for initial auth request: {:#?}",
-            response.json::<Value>().await.unwrap()
+            response
         );
     }
 
