@@ -20,8 +20,8 @@ use crate::{
 
 const BASE_URL_GLOBAL: &str = "https://api.tech26.global";
 const BASE_URL_DE: &str = "https://api.tech26.de";
-const BASIC_AUTH_USERNAME: &str = "my-trusted-wdpClient";
-const BASIC_AUTH_PASSWORD: &str = "secret";
+const BASIC_AUTH_USERNAME: &str = "nativeweb";
+const BASIC_AUTH_PASSWORD: &str = "";
 const HEADER_KEY_DEVICE_TOKEN: &str = "device-token";
 const HEADER_VALUE_DEVICE_TOKEN: &str = "34d100f8-ff28-487d-a836-3393d5e273d2";
 const GRANT_TYPE: &str = "grant_type";
