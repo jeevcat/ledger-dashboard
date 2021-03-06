@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
+use log::{error, info};
 
-use crate::{db::Database, model::rule::Rule, templater::Templater};
+use crate::{db::Database, model::rule::Rule};
 
 pub fn rules_routes() -> impl HttpServiceFactory {
     web::resource("/rules")
@@ -11,7 +12,7 @@ pub fn rules_routes() -> impl HttpServiceFactory {
         // return json parsing errors
         .app_data(web::JsonConfig::default().error_handler(|err, _req| {
             let reponse = HttpResponse::BadRequest().json(err.to_string());
-            println!("{}", err.to_string());
+            error!("{}", err.to_string());
             InternalError::from_response(err, reponse).into()
         }))
 }
@@ -26,14 +27,9 @@ async fn rules_get(db: web::Data<Arc<Database>>) -> HttpResponse {
     HttpResponse::Ok().json(db.get_all_rules())
 }
 
-async fn rules_add(
-    item: web::Json<Rule>,
-    db: web::Data<Arc<Database>>,
-    templater: web::Data<Arc<Mutex<Templater<'_>>>>,
-) -> HttpResponse {
-    println!("model: {:?}", &item);
+async fn rules_add(item: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse {
+    info!("Adding rule: {:?}", &item);
     let rule = item.0;
-    templater.lock().unwrap().register_rule(&rule).unwrap();
     db.create_or_update_rule(rule);
 
     HttpResponse::Ok().finish()

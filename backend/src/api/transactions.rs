@@ -1,10 +1,11 @@
 use std::{
     collections::{BTreeMap, HashMap},
     iter::FromIterator,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
+use log::error;
 
 use super::transactions_ib;
 use crate::{
@@ -50,7 +51,7 @@ pub fn transactions_routes() -> impl HttpServiceFactory {
         )
         .app_data(web::JsonConfig::default().error_handler(|err, _req| {
             let reponse = HttpResponse::BadRequest().json(err.to_string());
-            println!("{}", err.to_string());
+            error!("{}", err.to_string());
             InternalError::from_response(err, reponse).into()
         }))
 }
@@ -58,11 +59,8 @@ pub fn transactions_routes() -> impl HttpServiceFactory {
 async fn generate_single_transaction(
     request: web::Json<TransactionRequest>,
     hledger: web::Data<Arc<Hledger>>,
-    templater: web::Data<Arc<Mutex<Templater<'_>>>>,
 ) -> HttpResponse {
-    let description = templater
-        .lock()
-        .unwrap()
+    let description = Templater::new()
         .render_description(&request.description_template, &request.source_transaction);
     match description {
         Ok(description) => {

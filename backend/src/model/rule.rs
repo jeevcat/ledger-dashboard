@@ -50,7 +50,6 @@ impl Rule {
         if !self.matches(real_transaction) {
             return None;
         }
-
         let description = templater
             .render_description_from_rule(self, real_transaction)
             .unwrap_or_default();
@@ -60,5 +59,62 @@ impl Rule {
             &description,
             &self.account,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Datelike;
+    use lazy_static::lazy_static;
+    use regex::Regex;
+
+    use super::*;
+    use crate::model::{n26transaction::N26Transaction, rule::Rule};
+
+    lazy_static! {
+        static ref TRANSACTION: N26Transaction = serde_json::from_str(
+            r#"{
+                "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
+                "amount": 219.56,
+                "currencyCode": "EUR",
+                "visibleTS": 1597308032422,
+                "partnerName": "Amazon deals"
+            }"#,
+        )
+        .unwrap();
+        static ref RULE: Rule = Rule {
+            match_field_name: "partnerName".to_string(),
+            match_field_regex: Regex::new("(?i)amazon").unwrap(),
+            account: "Expenses:Personal:Entertainment".to_string(),
+            description_template: "Test description for {{{partnerName}}}".to_string(),
+            ..Rule::default()
+        };
+    }
+
+    #[test]
+    fn apply_rule() {
+        let mut templater = Templater::new();
+        templater.register_rule(&RULE).unwrap();
+        let t = RULE.apply(&templater, &*TRANSACTION).unwrap();
+        assert_eq!(t.tdescription, "Test description for Amazon deals");
+        assert_eq!(t.tdate.year(), 2020);
+        assert_eq!(t.tdate.month(), 8);
+        assert_eq!(t.tdate.day(), 13);
+        assert_eq!(t.ttags[0][0], "uuid");
+        assert_eq!(t.ttags[0][1], "1fc7d65c-de7c-415f-bf17-94de40c2e5d2");
+        assert_eq!(t.tpostings[0].paccount, "Assets:Cash:N26");
+        assert_eq!(t.tpostings[1].paccount, "Expenses:Personal:Entertainment");
+    }
+
+    #[test]
+    fn apply_rule_no_match() {
+        let rule = Rule {
+            match_field_regex: Regex::new(".*supermarket").unwrap(),
+            ..Rule::default()
+        };
+        let mut templater = Templater::new();
+        templater.register_rule(&rule).unwrap();
+        let t = rule.apply(&templater, &*TRANSACTION);
+        assert!(t.is_none());
     }
 }

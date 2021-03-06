@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashSet, sync::Arc};
 
 use actix_web::{web, HttpResponse};
 
@@ -13,8 +10,7 @@ use crate::{
         transaction_response::TransactionResponse,
     },
     n26::N26,
-    templater::Templater,
-    transactions,
+    transactions::{self},
 };
 pub type TransactionCollection = Vec<RecordedTransaction>;
 
@@ -42,7 +38,6 @@ pub async fn get_generated_transactions(
     n26: web::Data<Arc<N26>>,
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
-    templater: web::Data<Arc<Mutex<Templater<'_>>>>,
 ) -> HttpResponse {
     // Get real transactions
     let real_transactions = n26.get_transactions().await;
@@ -57,7 +52,6 @@ pub async fn get_generated_transactions(
         &recorded_transactions,
         &real_transactions,
         &rules,
-        &templater.lock().unwrap(),
     );
 
     HttpResponse::Ok().json(generated)
@@ -67,30 +61,21 @@ pub async fn write_generated_transactions(
     n26: web::Data<Arc<N26>>,
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
-    templater: web::Data<Arc<Mutex<Templater<'_>>>>,
 ) -> HttpResponse {
     // Get real transactions
     let n26_transactions = n26.get_transactions().await;
 
     // Get recorded transactions
     let hledger_transactions: TransactionCollection = hledger.get_transactions(N26_ACCOUNTS).await;
-    // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
-    let recorded_ids: HashSet<&str> = hledger_transactions.iter().flat_map(|t| t.ids()).collect();
 
     // Get rules
     let rules = db.get_all_rules();
 
-    let mut generated: Vec<RecordedTransaction> = n26_transactions
-        .iter()
-        // Only real transactions which haven't already been recorded
-        .filter(|real| !recorded_ids.contains(&*real.get_id()))
-        // Apply any matching rules to the real transactions
-        .filter_map(|real| {
-            rules
-                .iter()
-                .find_map(|rule| rule.apply(&templater.lock().unwrap(), real))
-        })
-        .collect();
+    let mut generated: Vec<RecordedTransaction> =
+        transactions::get_generated_transactions(&hledger_transactions, &n26_transactions, &rules)
+            .into_iter()
+            .filter_map(|t| t.recorded_transaction)
+            .collect();
 
     generated.sort_by(|a, b| a.tdate.cmp(&b.tdate));
     let result = hledger.write_transactions(&generated).await;

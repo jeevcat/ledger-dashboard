@@ -407,6 +407,7 @@ dependencies = [
  "dotenv",
  "env_logger",
  "handlebars",
+ "lazy_static",
  "log",
  "regex",
  "reqwest",

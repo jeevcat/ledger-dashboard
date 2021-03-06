@@ -9,7 +9,7 @@ use std::{
     time,
 };
 
-use log::{info, warn};
+use log::{error, info, warn};
 
 use crate::{
     api::transactions::TransactionCollection, file_utils::get_imported_ledger_file,
@@ -154,9 +154,9 @@ impl Hledger {
         };
 
         if !response.status().is_success() {
-            println!("{}", serde_json::to_string_pretty(recorded).unwrap());
-            println!("{:#?}", response);
-            println!("{}", response.text().await.unwrap());
+            error!("{}", serde_json::to_string_pretty(recorded).unwrap());
+            error!("{:#?}", response);
+            error!("{}", response.text().await.unwrap());
             return false;
         }
         true

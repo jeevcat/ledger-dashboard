@@ -1,4 +1,5 @@
 use csv::StringRecord;
+use log::error;
 use serde::Deserialize;
 
 use crate::{file_utils::get_database_file, model::ib_report::IbReport};
@@ -43,7 +44,7 @@ pub fn deserialize_record<'a, T>(
     }
     match record.deserialize::<'a, T>(Some(headers)) {
         Ok(row) => target_vec.push(row),
-        Err(e) => println!("{:?}", e),
+        Err(e) => error!("{:?}", e),
     }
 }
 

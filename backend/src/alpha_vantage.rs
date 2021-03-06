@@ -1,6 +1,7 @@
 use std::{collections::HashMap, thread, time};
 
 use chrono::NaiveDate;
+use log::info;
 use rust_decimal::Decimal;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -87,7 +88,7 @@ impl AlphaVantage {
     ) -> Result<Vec<Price>, Box<dyn std::error::Error>> {
         let request_symbol = format!("{}.DE", from_commodity);
 
-        println!(
+        info!(
             "Looking up prices for {} using Alpha Vantage...",
             request_symbol
         );
@@ -121,8 +122,8 @@ impl AlphaVantage {
                     if err.downcast_ref::<reqwest::Error>().is_some() {
                         return req;
                     }
-                    println!("Alpha Vantage request throttled. Waiting 10 seconds...");
-                    println!("-> {:#?}", err);
+                    info!("Alpha Vantage request throttled. Waiting 10 seconds...");
+                    info!("-> {:#?}", err);
                     thread::sleep(time::Duration::from_secs(10));
                 }
             }

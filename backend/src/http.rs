@@ -1,15 +1,11 @@
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
+use std::{io, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::{middleware, App, HttpServer};
 
-use crate::{alpha_vantage, api, db, hledger, n26, prices, templater};
+use crate::{alpha_vantage, api, db, hledger, n26, prices};
 
 pub async fn run_server(db: Arc<db::Database>, n26: Arc<n26::N26>) -> io::Result<()> {
-    let templater = Arc::new(Mutex::new(templater::Templater::new(&db).unwrap()));
     let hledger = Arc::new(hledger::Hledger::new());
     let alpha_vantage = Arc::new(alpha_vantage::AlphaVantage::new());
     let prices = Arc::new(prices::Prices::new(alpha_vantage.clone()));
@@ -28,7 +24,6 @@ pub async fn run_server(db: Arc<db::Database>, n26: Arc<n26::N26>) -> io::Result
             .data(n26.clone())
             .data(hledger.clone())
             .data(db.clone())
-            .data(templater.clone())
             .data(prices.clone())
             .service(api::rules::rules_routes())
             .service(api::rules::rule_routes())
