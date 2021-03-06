@@ -13,7 +13,6 @@ actix-web = "3.3"
 actix-rt = "1"
 actix-service = "1.0"
 actix-cors = "0.5"
-openssl-probe = "0.1.2"
 
 dotenv = "0.15"
 log = "*"
