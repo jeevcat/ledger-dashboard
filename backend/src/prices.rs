@@ -1,4 +1,11 @@
-use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{self, File}, io, str::FromStr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    fs::{self, File},
+    io,
+    str::FromStr,
+    sync::Arc,
+};
 
 use chrono::NaiveDate;
 use io::BufRead;
@@ -121,8 +128,8 @@ impl Prices {
     }
 
     fn load_currencies_from_disk(json: &str) -> HashSet<String> {
-        let currencies: HashMap<String, String> = serde_json::from_str(json)
-            .unwrap_or_else(|_| panic!("Coudn't deserialize {}", json));
+        let currencies: HashMap<String, String> =
+            serde_json::from_str(json).unwrap_or_else(|_| panic!("Coudn't deserialize {}", json));
         currencies.into_iter().map(|(c, _)| c).collect()
     }
 

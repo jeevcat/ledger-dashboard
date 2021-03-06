@@ -91,7 +91,7 @@ impl N26 {
 
     // Cache
 
-    pub fn invalidate_cache(&self) {
+    pub fn _invalidate_cache(&self) {
         self.cache_valid.store(false, Ordering::SeqCst);
     }
 

@@ -11,7 +11,6 @@ mod ib;
 mod model;
 mod n26;
 mod prices;
-mod scheduler;
 mod templater;
 mod transactions;
 
@@ -24,9 +23,6 @@ async fn main() -> std::io::Result<()> {
 
     let db = Arc::new(db::Database::new());
     let n26 = Arc::new(n26::N26::new(db.clone()));
-
-    // Start Scheduler
-    scheduler::Scheduler::start(n26.clone());
 
     // Start Web server
     http::run_server(db, n26).await
