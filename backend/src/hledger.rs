@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader},
+    path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering::Relaxed},
@@ -9,42 +10,43 @@ use std::{
     time,
 };
 
+use chrono::Datelike;
 use log::{error, info, warn};
 
 use crate::{
-    api::transactions::TransactionCollection, file_utils::get_imported_ledger_file,
+    api::transactions::TransactionCollection,
+    file_utils::{get_imported_ledger_file, get_ledger_year_files},
     model::recorded_transaction::RecordedTransaction,
 };
 
 const CONTENT_TYPE: &str = "Content-Type";
 const CONTENT_TYPE_JSON: &str = "application/json";
-const PORT: &str = "5001";
+const READ_PORT: i32 = 5001;
 const BASE_URL: &str = "http://127.0.0.1";
 
-pub struct Hledger {
-    cache: Mutex<HashMap<String, TransactionCollection>>,
-    cache_valid: AtomicBool,
-    http_client: reqwest::Client,
+pub struct HledgerProcess {
+    journal_file: PathBuf,
     process: Mutex<Child>,
-    process_ready: AtomicBool,
+    ready: AtomicBool,
+    port: i32,
 }
 
-impl Hledger {
-    pub fn new() -> Self {
+impl HledgerProcess {
+    fn new(journal_file: &Path, port: i32) -> Self {
+        let process = Mutex::new(Self::spawn_hledger_process(journal_file, port));
         Self {
-            cache: Mutex::new(HashMap::new()),
-            cache_valid: AtomicBool::new(false),
-            http_client: reqwest::Client::new(),
-            process: Mutex::new(Self::spawn_hledger_process()),
-            process_ready: AtomicBool::new(true),
+            journal_file: journal_file.to_path_buf(),
+            process,
+            ready: AtomicBool::new(false),
+            port,
         }
     }
 
     /// Leave the json as a string as we just pass it back to our own API
-    pub async fn get_accounts(&self) -> String {
+    async fn get_accounts(&self) -> String {
         self.wait_for_hledger_process();
 
-        let request_url = format!("{}:{}/accountnames", BASE_URL, PORT);
+        let request_url = format!("{}:{}/accountnames", BASE_URL, self.port);
         reqwest::get(request_url.as_str())
             .await
             .unwrap()
@@ -53,10 +55,10 @@ impl Hledger {
             .unwrap()
     }
 
-    pub async fn get_commodities(&self) -> Vec<String> {
+    async fn get_commodities(&self) -> Vec<String> {
         self.wait_for_hledger_process();
 
-        let request_url = format!("{}:{}/commodities", BASE_URL, PORT);
+        let request_url = format!("{}:{}/commodities", BASE_URL, self.port);
         let commodities = reqwest::get(request_url.as_str())
             .await
             .unwrap()
@@ -70,78 +72,33 @@ impl Hledger {
             .collect()
     }
 
-    pub async fn get_transactions(&self, account_names: &[&str]) -> TransactionCollection {
-        // Early return cached transactions
-        let cache_key = account_names.join("-");
-        if self.is_cache_valid() {
-            info!("hledger using cache!");
-            return self.get_cached_transactions(&cache_key);
-        }
-
+    async fn get_transactions(&self, account_names: &[&str]) -> TransactionCollection {
         self.wait_for_hledger_process();
 
         // Fetch transactions from hledger-web API
-        let request_url = format!("{}:{}/transactions", BASE_URL, PORT);
+        let request_url = format!("{}:{}/transactions", BASE_URL, self.port);
         let response = reqwest::get(request_url.as_str()).await.unwrap();
         let all: Vec<RecordedTransaction> = response.json().await.unwrap();
 
         // Filter transactions by given account name
-        let transactions: TransactionCollection = all
-            .into_iter()
+        all.into_iter()
             .rev()
             .filter(|t| {
                 t.tpostings
                     .iter()
                     .any(|p| account_names.iter().any(|n| p.paccount.as_str() == *n))
             })
-            .collect();
-
-        // Write to cache
-        self.cache_transactions(&cache_key, &transactions);
-
-        transactions
+            .collect()
     }
 
-    // TODO: proper errors
-    pub async fn write_single_transaction(&self, recorded: &RecordedTransaction) -> bool {
-        self.wait_for_hledger_process();
-
-        self.invalidate_cache();
-
-        if !self.write_transaction(recorded).await {
-            return false;
-        }
-
-        self.restart_hledger();
-
-        true
-    }
-
-    // TODO: proper errors
-    pub async fn write_transactions(&self, recorded: &[RecordedTransaction]) -> bool {
-        self.wait_for_hledger_process();
-
-        self.invalidate_cache();
-        for t in recorded {
-            if !self.write_transaction(t).await {
-                warn!("Couldn't write transacation. Restarting hledger...");
-                // Restart hledger and try again
-                self.restart_hledger();
-                if !self.write_transaction(t).await {
-                    return false;
-                }
-            }
-        }
-        self.restart_hledger();
-
-        true
-    }
-
-    pub async fn write_transaction(&self, recorded: &RecordedTransaction) -> bool {
+    async fn write_transaction(
+        &self,
+        http_client: &reqwest::Client,
+        recorded: &RecordedTransaction,
+    ) -> bool {
         let json = serde_json::to_string(recorded).unwrap();
-        let request_url = format!("{}:{}/add", BASE_URL, PORT);
-        let response = match self
-            .http_client
+        let request_url = format!("{}:{}/add", BASE_URL, self.port);
+        let response = match http_client
             .put(request_url.as_str())
             .header(CONTENT_TYPE, CONTENT_TYPE_JSON)
             .body(json)
@@ -162,8 +119,40 @@ impl Hledger {
         true
     }
 
+    fn wait_for_hledger_process(&self) {
+        while !self.ready.load(Relaxed) {
+            info!("Waiting for hledger-api process...")
+        }
+    }
+
+    fn spawn_hledger_process(journal_file: &Path, port: i32) -> Child {
+        info!("Path of ledger journal file is: {}", journal_file.display());
+        info!("Starting hledger-web...");
+        let mut process = Command::new("hledger-web")
+            .arg("--serve-api")
+            .arg("--port")
+            .arg(port.to_string())
+            .arg("-f")
+            .arg(journal_file)
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Couldn't start hledger command");
+        let output = process
+            .stdout
+            .as_mut()
+            .expect("Couldn't capture hledger-web stdout");
+        let mut reader = BufReader::new(output);
+        let mut line = String::new();
+        while !line.contains("Press ctrl-c to quit") {
+            line.clear();
+            reader.read_line(&mut line).unwrap();
+        }
+        info!("hledger-web successfully launched!");
+        process
+    }
+
     fn restart_hledger(&self) {
-        self.process_ready.store(false, Relaxed);
+        self.ready.store(false, Relaxed);
         let mut process = self.process.lock().unwrap();
         info!("killing hledger-web...");
         process
@@ -174,8 +163,94 @@ impl Hledger {
             .wait()
             .expect("Couldn't wait hledger-web as it wasn't running");
         info!("hledger-web closed with exit code: {}", exit_code);
-        *process = Self::spawn_hledger_process();
-        self.process_ready.store(true, Relaxed);
+        *process = Self::spawn_hledger_process(&self.journal_file, self.port);
+        self.ready.store(true, Relaxed);
+    }
+}
+
+pub struct Hledger {
+    cache: Mutex<HashMap<String, TransactionCollection>>,
+    cache_valid: AtomicBool,
+    http_client: reqwest::Client,
+    read_process: HledgerProcess,
+    write_processes: HashMap<i32, HledgerProcess>,
+}
+
+impl Hledger {
+    pub fn new() -> Self {
+        Self {
+            cache: Mutex::new(HashMap::new()),
+            cache_valid: AtomicBool::new(false),
+            http_client: reqwest::Client::new(),
+            read_process: HledgerProcess::new(&get_imported_ledger_file().unwrap(), READ_PORT),
+            write_processes: get_ledger_year_files()
+                .into_iter()
+                .map(|(y, f)| (y, HledgerProcess::new(&f, y + READ_PORT - 2000)))
+                .collect(),
+        }
+    }
+
+    pub async fn get_accounts(&self) -> String {
+        self.read_process.get_accounts().await
+    }
+
+    pub async fn get_commodities(&self) -> Vec<String> {
+        self.read_process.get_commodities().await
+    }
+
+    pub async fn get_transactions(&self, account_names: &[&str]) -> TransactionCollection {
+        // Early return cached transactions
+        let cache_key = account_names.join("-");
+        if self.is_cache_valid() {
+            info!("hledger using cache!");
+            return self.get_cached_transactions(&cache_key);
+        }
+
+        let transactions = self.read_process.get_transactions(account_names).await;
+
+        // Write to cache
+        self.cache_transactions(&cache_key, &transactions);
+
+        transactions
+    }
+
+    // TODO: proper errors
+    pub async fn write_single_transaction(&self, recorded: &RecordedTransaction) -> bool {
+        if let Some(process) = self.write_processes.get(&recorded.tdate.year()) {
+            process.wait_for_hledger_process();
+
+            self.invalidate_cache();
+
+            if !process.write_transaction(&self.http_client, recorded).await {
+                return false;
+            }
+
+            process.restart_hledger();
+
+            return true;
+        }
+        false
+    }
+
+    // TODO: proper errors
+    pub async fn write_transactions(&self, recorded: &[RecordedTransaction]) -> bool {
+        self.invalidate_cache();
+        for t in recorded {
+            if let Some(process) = self.write_processes.get(&t.tdate.year()) {
+                process.wait_for_hledger_process();
+                if !process.write_transaction(&self.http_client, t).await {
+                    warn!("Couldn't write transacation. Restarting hledger...");
+                    // Restart hledger and try again
+                    process.restart_hledger();
+                    if !process.write_transaction(&self.http_client, t).await {
+                        return false;
+                    }
+                }
+            }
+        }
+        self.read_process.restart_hledger();
+
+        true
     }
 
     // Cache
@@ -198,38 +273,5 @@ impl Hledger {
 
     fn invalidate_cache(&self) {
         self.cache_valid.store(false, Relaxed)
-    }
-
-    fn wait_for_hledger_process(&self) {
-        while !self.process_ready.load(Relaxed) {
-            info!("Waiting for hledger-api process...")
-        }
-    }
-
-    fn spawn_hledger_process() -> Child {
-        let journal_file = get_imported_ledger_file().unwrap();
-        info!("Path of ledger journal file is: {}", journal_file.display());
-        info!("Starting hledger-web...");
-        let mut process = Command::new("hledger-web")
-            .arg("--serve-api")
-            .arg("--port")
-            .arg(PORT)
-            .arg("-f")
-            .arg(journal_file)
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Couldn't start hledger command");
-        let output = process
-            .stdout
-            .as_mut()
-            .expect("Couldn't capture hledger-web stdout");
-        let mut reader = BufReader::new(output);
-        let mut line = String::new();
-        while !line.contains("Press ctrl-c to quit") {
-            line.clear();
-            reader.read_line(&mut line).unwrap();
-        }
-        info!("hledger-web successfully launched!");
-        process
     }
 }

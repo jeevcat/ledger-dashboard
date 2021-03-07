@@ -8,6 +8,24 @@ pub fn get_imported_ledger_file() -> Option<PathBuf> {
     Some(get_journal_path()?.join("imported.ledger"))
 }
 
+pub fn get_ledger_year_file(year: i32) -> Option<PathBuf> {
+    Some(get_journal_path()?.join(match year {
+        2016 => "2016.ledger",
+        2017 => "2017.ledger",
+        2018 => "2018.ledger",
+        2019 => "2019.ledger",
+        2020 => "2020/autofilled.ledger",
+        2021 => "2021.ledger",
+        _ => return None,
+    }))
+}
+
+pub fn get_ledger_year_files() -> Vec<(i32, PathBuf)> {
+    (2016..2021)
+        .filter_map(|year| get_ledger_year_file(year).map(|f| (year, f)))
+        .collect()
+}
+
 pub fn get_prices_file() -> Option<PathBuf> {
     Some(get_journal_path()?.join("prices.ledger"))
 }
