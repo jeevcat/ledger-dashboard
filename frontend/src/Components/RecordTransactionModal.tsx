@@ -27,10 +27,15 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
 
   const updatePreview = useCallback(
     () =>
-      generateTransaction(false).then((response: Transaction) => {
+      generateSingleTransaction({
+        account,
+        descriptionTemplate,
+        sourceTransaction: realTransaction,
+        shouldWrite: false,
+      }).then((response: Transaction) => {
         setGeneratedTransaction(response);
       }),
-    [generateTransaction]
+    [account, descriptionTemplate, realTransaction]
   );
 
   return (
