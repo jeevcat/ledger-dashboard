@@ -64,7 +64,7 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
                 fluid
                 value={descriptionTemplate}
                 label="Description"
-                onChange={(data: any) => {
+                onChange={(_: any, data: any) => {
                   setDescriptionTemplate(data.value);
                   updatePreview();
                 }}
