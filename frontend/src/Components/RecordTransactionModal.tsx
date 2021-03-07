@@ -25,6 +25,14 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
     [account, descriptionTemplate, realTransaction]
   );
 
+  const updatePreview = useCallback(
+    () =>
+      generateTransaction(false).then((response: Transaction) => {
+        setGeneratedTransaction(response);
+      }),
+    [generateTransaction]
+  );
+
   return (
     <Modal
       trigger={
@@ -33,9 +41,7 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
           icon="write"
           onClick={() => {
             setIsOpen(true);
-            generateTransaction(false).then((response: Transaction) => {
-              setGeneratedTransaction(response);
-            });
+            updatePreview();
           }}
         />
       }
@@ -55,6 +61,7 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
                 label="Description"
                 onChange={(_, data) => {
                   setDescriptionTemplate(data.value);
+                  updatePreview();
                 }}
               />
               <br />
