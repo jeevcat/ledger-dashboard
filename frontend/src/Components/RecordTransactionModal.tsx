@@ -64,13 +64,20 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
                 fluid
                 value={descriptionTemplate}
                 label="Description"
-                onChange={(_, data) => {
+                onChange={(data: any) => {
                   setDescriptionTemplate(data.value);
                   updatePreview();
                 }}
               />
               <br />
-              <LedgerAccountsDropdown account={account} accounts={accounts} onEdit={setAccount} />
+              <LedgerAccountsDropdown
+                account={account}
+                accounts={accounts}
+                onEdit={(newAccount: string) => {
+                  setAccount(newAccount);
+                  updatePreview();
+                }}
+              />
             </Grid.Column>
             <Grid.Column>
               {generatedTransaction ? <GeneratedTransaction transaction={generatedTransaction} /> : <Loader />}
