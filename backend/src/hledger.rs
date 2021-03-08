@@ -26,20 +26,21 @@ const BASE_URL: &str = "http://127.0.0.1";
 
 pub struct HledgerProcess {
     journal_file: PathBuf,
-    process: Mutex<Child>,
+    process: Mutex<Option<Child>>,
     ready: AtomicBool,
     port: i32,
 }
 
 impl HledgerProcess {
     fn new(journal_file: &Path, port: i32) -> Self {
-        let process = Mutex::new(Self::spawn_hledger_process(journal_file, port));
-        Self {
+        let h = Self {
             journal_file: journal_file.to_path_buf(),
-            process,
             ready: AtomicBool::new(false),
             port,
-        }
+            process: Mutex::new(None),
+        };
+        h.spawn_process();
+        h
     }
 
     /// Leave the json as a string as we just pass it back to our own API
@@ -121,19 +122,25 @@ impl HledgerProcess {
 
     fn wait_for_hledger_process(&self) {
         while !self.ready.load(Relaxed) {
-            info!("Waiting for hledger-api process...")
+            info!(
+                "Waiting for hledger-api process for {:#?} on {}...",
+                self.journal_file, self.port
+            )
         }
     }
 
-    fn spawn_hledger_process(journal_file: &Path, port: i32) -> Child {
-        info!("Path of ledger journal file is: {}", journal_file.display());
+    fn spawn_process(&self) {
+        info!(
+            "Path of ledger journal file is: {}",
+            self.journal_file.display()
+        );
         info!("Starting hledger-web...");
         let mut process = Command::new("hledger-web")
             .arg("--serve-api")
             .arg("--port")
-            .arg(port.to_string())
+            .arg(self.port.to_string())
             .arg("-f")
-            .arg(journal_file)
+            .arg(&self.journal_file)
             .stdout(Stdio::piped())
             .spawn()
             .expect("Couldn't start hledger command");
@@ -148,23 +155,24 @@ impl HledgerProcess {
             reader.read_line(&mut line).unwrap();
         }
         info!("hledger-web successfully launched!");
-        process
+        self.ready.store(true, Relaxed);
+        *self.process.lock().unwrap() = Some(process)
     }
 
     fn restart_hledger(&self) {
         self.ready.store(false, Relaxed);
-        let mut process = self.process.lock().unwrap();
-        info!("killing hledger-web...");
-        process
-            .kill()
-            .expect("Couldn't kill hledger-web as it wasn't running");
-        info!("Waiting for hledger-web to close...");
-        let exit_code = process
-            .wait()
-            .expect("Couldn't wait hledger-web as it wasn't running");
-        info!("hledger-web closed with exit code: {}", exit_code);
-        *process = Self::spawn_hledger_process(&self.journal_file, self.port);
-        self.ready.store(true, Relaxed);
+        if let Some(process) = &mut *self.process.lock().unwrap() {
+            info!("killing hledger-web...");
+            process
+                .kill()
+                .expect("Couldn't kill hledger-web as it wasn't running");
+            info!("Waiting for hledger-web to close...");
+            let exit_code = process
+                .wait()
+                .expect("Couldn't wait hledger-web as it wasn't running");
+            info!("hledger-web closed with exit code: {}", exit_code);
+        }
+        self.spawn_process();
     }
 }
 
