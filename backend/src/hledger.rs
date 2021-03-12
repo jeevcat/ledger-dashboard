@@ -267,7 +267,7 @@ impl Hledger {
                     year,
                     self.write_processes
                         .keys()
-                        .map(|y: &i32| i.to_string())
+                        .map(|y: &i32| y.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
                 );
