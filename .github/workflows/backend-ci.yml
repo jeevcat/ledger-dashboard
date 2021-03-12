@@ -21,6 +21,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          default: true
       - name: Rust Cache
         uses: Swatinem/rust-cache@v1
         with:
