@@ -99,6 +99,10 @@ impl HledgerProcess {
     ) -> bool {
         let json = serde_json::to_string(recorded).unwrap();
         let request_url = format!("{}:{}/add", BASE_URL, self.port);
+        info!(
+            "Writing transaction ({}) to hledger file {:#?} using url {}",
+            recorded.tdescription, self.journal_file, &request_url
+        );
         let response = match http_client
             .put(request_url.as_str())
             .header(CONTENT_TYPE, CONTENT_TYPE_JSON)
@@ -111,7 +115,10 @@ impl HledgerProcess {
             Err(_) => return false,
         };
 
-        if !response.status().is_success() {
+        if response.status().is_success() {
+            info!("{:#?}", response);
+        }
+        else {
             error!("{}", serde_json::to_string_pretty(recorded).unwrap());
             error!("{:#?}", response);
             error!("{}", response.text().await.unwrap());
