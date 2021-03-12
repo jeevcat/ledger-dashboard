@@ -117,8 +117,7 @@ impl HledgerProcess {
 
         if response.status().is_success() {
             info!("{:#?}", response);
-        }
-        else {
+        } else {
             error!("{}", serde_json::to_string_pretty(recorded).unwrap());
             error!("{:#?}", response);
             error!("{}", response.text().await.unwrap());
@@ -169,7 +168,7 @@ impl HledgerProcess {
     fn restart_hledger(&self) {
         self.ready.store(false, Relaxed);
         if let Some(process) = &mut *self.process.lock().unwrap() {
-            info!("killing hledger-web...");
+            info!("killing hledger-web {:#?}...", self.journal_file);
             process
                 .kill()
                 .expect("Couldn't kill hledger-web as it wasn't running");
@@ -251,7 +250,8 @@ impl Hledger {
     pub async fn write_transactions(&self, recorded: &[RecordedTransaction]) -> bool {
         self.invalidate_cache();
         for t in recorded {
-            if let Some(process) = self.write_processes.get(&t.tdate.year()) {
+            let year = &t.tdate.year();
+            if let Some(process) = self.write_processes.get(year) {
                 process.wait_for_hledger_process();
                 if !process.write_transaction(&self.http_client, t).await {
                     warn!("Couldn't write transacation. Restarting hledger...");
@@ -261,6 +261,16 @@ impl Hledger {
                         return false;
                     }
                 }
+            } else {
+                error!(
+                    "Couldn't find hledger process for year {} in {}",
+                    year,
+                    self.write_processes
+                        .keys()
+                        .map(|y: &i32| i.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
         }
         self.read_process.restart_hledger();
