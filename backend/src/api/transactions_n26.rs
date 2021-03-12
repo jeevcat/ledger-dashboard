@@ -1,6 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use actix_web::{web, HttpResponse};
+use log::info;
 
 use crate::{
     db::Database,
@@ -78,10 +79,11 @@ pub async fn write_generated_transactions(
             .collect();
 
     generated.sort_by(|a, b| a.tdate.cmp(&b.tdate));
+    info!("Writing {} transactions to hledger", generated.len());
     let result = hledger.write_transactions(&generated).await;
 
     if result {
-        HttpResponse::Ok().finish()
+        HttpResponse::Created().finish()
     } else {
         HttpResponse::InternalServerError().finish()
     }
