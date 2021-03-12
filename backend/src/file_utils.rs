@@ -21,7 +21,7 @@ pub fn get_ledger_year_file(year: i32) -> Option<PathBuf> {
 }
 
 pub fn get_ledger_year_files() -> Vec<(i32, PathBuf)> {
-    (2016..2021)
+    (2016..=2021)
         .filter_map(|year| get_ledger_year_file(year).map(|f| (year, f)))
         .collect()
 }
