@@ -46,16 +46,8 @@ struct SearchHelper {
 
 #[derive(Debug, Deserialize)]
 struct EntryHelper {
-    #[serde(rename = "1. open")]
-    pub open: Decimal,
-    #[serde(rename = "2. high")]
-    pub high: Decimal,
-    #[serde(rename = "3. low")]
-    pub low: Decimal,
-    #[serde(rename = "4. close")]
+    #[serde(alias = "4. close", alias = "4a. close (EUR)")]
     pub close: Decimal,
-    #[serde(rename = "5. volume")]
-    pub volume: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,7 +56,11 @@ pub struct TimeSeriesHelper {
     error: Option<String>,
     #[serde(rename = "Meta Data")]
     metadata: Option<HashMap<String, String>>,
-    #[serde(rename = "Weekly Time Series")]
+    #[serde(
+        alias = "Weekly Time Series",
+        alias = "Time Series FX (Weekly)",
+        alias = "Time Series (Digital Currency Weekly)"
+    )]
     time_series: HashMap<String, EntryHelper>,
 }
 
@@ -89,12 +85,70 @@ impl AlphaVantage {
         let request_symbol = format!("{}.DE", from_commodity);
 
         info!(
-            "Looking up prices for {} using Alpha Vantage...",
-            request_symbol
+            "Looking up prices for stock {}->{} using Alpha Vantage...",
+            request_symbol, to_commodity
         );
 
         let time_series: TimeSeriesHelper = self
             .alpha_vantage_request("TIME_SERIES_WEEKLY", &[("symbol", &request_symbol)])
+            .await?;
+
+        Ok(time_series
+            .time_series
+            .iter()
+            .map(|(date_str, entry)| Price {
+                date: NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap(),
+                from_commodity: from_commodity.to_string(),
+                to_commodity: to_commodity.to_string(),
+                amount: entry.close,
+            })
+            .collect())
+    }
+
+    pub async fn fetch_weekly_forex(
+        &self,
+        from_commodity: &str,
+        to_commodity: &str,
+    ) -> Result<Vec<Price>, Box<dyn std::error::Error>> {
+        info!(
+            "Looking up prices for forex {}->{} using Alpha Vantage...",
+            from_commodity, to_commodity
+        );
+
+        let time_series: TimeSeriesHelper = self
+            .alpha_vantage_request(
+                "FX_WEEKLY",
+                &[("from_symbol", from_commodity), ("to_symbol", to_commodity)],
+            )
+            .await?;
+
+        Ok(time_series
+            .time_series
+            .iter()
+            .map(|(date_str, entry)| Price {
+                date: NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap(),
+                from_commodity: from_commodity.to_string(),
+                to_commodity: to_commodity.to_string(),
+                amount: entry.close,
+            })
+            .collect())
+    }
+
+    pub async fn fetch_weekly_crypto(
+        &self,
+        from_commodity: &str,
+        to_commodity: &str,
+    ) -> Result<Vec<Price>, Box<dyn std::error::Error>> {
+        info!(
+            "Looking up prices for crypto {}->{} using Alpha Vantage...",
+            from_commodity, to_commodity
+        );
+
+        let time_series: TimeSeriesHelper = self
+            .alpha_vantage_request(
+                "DIGITAL_CURRENCY_WEEKLY",
+                &[("symbol", from_commodity), ("market", to_commodity)],
+            )
             .await?;
 
         Ok(time_series

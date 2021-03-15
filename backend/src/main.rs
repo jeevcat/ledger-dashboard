@@ -18,7 +18,7 @@ mod transactions;
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
     std::env::set_var("RUST_LOG", "info");
-    std::env::set_var("RUST_BACKTRACE", "1");
+    //std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 
     let db = Arc::new(db::Database::new());

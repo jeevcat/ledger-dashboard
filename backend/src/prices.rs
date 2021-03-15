@@ -14,12 +14,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::{alpha_vantage::AlphaVantage, file_utils};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Price {
     pub date: NaiveDate,
     pub from_commodity: String,
     pub to_commodity: String,
     pub amount: Decimal,
+}
+
+impl PartialEq for Price {
+    fn eq(&self, other: &Self) -> bool {
+        // Ignore amount
+        self.date == other.date
+            && self.from_commodity == other.from_commodity
+            && self.to_commodity == other.to_commodity
+    }
 }
 
 const DATE_FMT: &str = "%Y/%m/%d";
@@ -83,9 +92,17 @@ impl Prices {
 
     // Disk operations
 
-    pub async fn update_prices(&self, commodities: &[String]) {
+    pub async fn update_prices<'a, I, S>(&self, commodities: I)
+    where
+        I: IntoIterator<Item = &'a S>,
+        S: AsRef<str> + 'a,
+    {
         let mut prices = Prices::read_prices();
-        for commodity in commodities {
+        for commodity in commodities.into_iter().map(AsRef::as_ref) {
+            if commodity == NATIVE_COMMODITY {
+                continue;
+            }
+
             let mut fetched_prices = self.fetch_prices(commodity, NATIVE_COMMODITY).await;
             prices.append(&mut fetched_prices);
         }
@@ -96,7 +113,7 @@ impl Prices {
                 .then(a.from_commodity.partial_cmp(&b.from_commodity).unwrap())
         });
 
-        let start_date = NaiveDate::from_ymd(2017, 1, 1);
+        let start_date = NaiveDate::from_ymd(2016, 1, 1);
         prices.retain(|p| p.date > start_date);
         prices.dedup();
 
@@ -135,8 +152,16 @@ impl Prices {
 
     // Web operations
     async fn fetch_prices(&self, from_commodity: &str, to_commodity: &str) -> Vec<Price> {
-        if self.is_currency(from_commodity) || self.is_cryptocurrency(from_commodity) {
-            vec![]
+        if self.is_currency(from_commodity) {
+            self.alpha_vantage
+                .fetch_weekly_forex(from_commodity, to_commodity)
+                .await
+                .unwrap()
+        } else if self.is_cryptocurrency(from_commodity) {
+            self.alpha_vantage
+                .fetch_weekly_crypto(from_commodity, to_commodity)
+                .await
+                .unwrap()
         } else {
             self.alpha_vantage
                 .fetch_weekly_stocks(from_commodity, to_commodity)

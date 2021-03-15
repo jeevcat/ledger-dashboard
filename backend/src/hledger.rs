@@ -136,11 +136,6 @@ impl HledgerProcess {
     }
 
     fn spawn_process(&self) {
-        info!(
-            "Path of ledger journal file is: {}",
-            self.journal_file.display()
-        );
-        info!("Starting hledger-web...");
         let mut process = Command::new("hledger-web")
             .arg("--serve-api")
             .arg("--port")
@@ -160,7 +155,13 @@ impl HledgerProcess {
             line.clear();
             reader.read_line(&mut line).unwrap();
         }
-        info!("hledger-web successfully launched!");
+        info!(
+            "hledger-web successfully launched for {:#?} at {}:{} with PID {}",
+            self.journal_file,
+            BASE_URL,
+            self.port,
+            process.id(),
+        );
         self.ready.store(true, Relaxed);
         *self.process.lock().unwrap() = Some(process)
     }
@@ -196,7 +197,7 @@ impl Hledger {
             cache: Mutex::new(HashMap::new()),
             cache_valid: AtomicBool::new(false),
             http_client: reqwest::Client::new(),
-            read_process: HledgerProcess::new(&get_imported_ledger_file().unwrap(), READ_PORT),
+            read_process: HledgerProcess::new(&get_imported_ledger_file(), READ_PORT),
             write_processes: get_ledger_year_files()
                 .into_iter()
                 .map(|(y, f)| (y, HledgerProcess::new(&f, y + READ_PORT - 2000)))

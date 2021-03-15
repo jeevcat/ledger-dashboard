@@ -4,8 +4,10 @@ use log::info;
 
 use crate::config;
 
-pub fn get_imported_ledger_file() -> Option<PathBuf> {
-    Some(get_journal_path()?.join("imported.ledger"))
+pub fn get_imported_ledger_file() -> PathBuf {
+    get_journal_path()
+        .unwrap_or_else(|| panic!("Can't determine journal path"))
+        .join("imported.ledger")
 }
 
 pub fn get_ledger_year_file(year: i32) -> Option<PathBuf> {
@@ -44,18 +46,18 @@ fn get_backend_path() -> Option<PathBuf> {
     Some(env::current_exe().ok()?.parent()?.to_path_buf())
 }
 
-fn get_base_path() -> Option<PathBuf> {
-    get_backend_path()?
-        .parent()?
-        .parent()
-        .map(|p| p.to_path_buf())
+fn get_journal_path() -> Option<PathBuf> {
+    config::journal_path()
+        .map(PathBuf::from)
+        .or_else(get_ledger_file)
 }
 
-fn get_journal_path() -> Option<PathBuf> {
-    Some(match config::journal_path() {
-        Some(path) => PathBuf::from(path),
-        None => get_base_path()?.join("journal"),
-    })
+fn get_ledger_file() -> Option<PathBuf> {
+    Some(
+        PathBuf::from(option_env!("LEDGER_FILE")?)
+            .parent()?
+            .to_path_buf(),
+    )
 }
 
 fn get_database_path() -> Option<PathBuf> {
