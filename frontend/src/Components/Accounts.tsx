@@ -6,7 +6,7 @@ import { AccountComponent } from "./Account";
 export const AccountsComponent: React.FC = () => {
   const accounts = ImportAccounts.map((x) => <AccountComponent account={x} key={x.path} />);
   return (
-    <Grid textAlign="center" style={{ height: "100vh" }} verticalAlign="middle">
+    <Grid textAlign="center" verticalAlign="middle" style={{ height: "100vh", margin: 0 }}>
       <Grid.Column style={{ maxWidth: 800 }}>
         <Header as="h1">Accounts</Header>
         <Table>
