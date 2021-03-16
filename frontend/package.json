@@ -15,11 +15,12 @@
     "react-scripts": "4.0.3",
     "semantic-ui-css": "^2.4.1",
     "semantic-ui-react": "^2.0.3",
-    "typescript": "^4.2.3"
+    "typescript": "^4.2.3",
+    "uplot": "^1.6.7"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.16.1",
-    "@typescript-eslint/parser": "^4.16.1",
+    "@typescript-eslint/eslint-plugin": "^4.18.0",
+    "@typescript-eslint/parser": "^4.18.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.21.0",
     "eslint-plugin-flowtype": "^5.3.1",

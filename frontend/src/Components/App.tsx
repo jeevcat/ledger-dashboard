@@ -14,9 +14,12 @@ const App: React.FC = () => {
     <Router>
       <div className="flexbox">
         <Menu vertical className="sidebarmenu">
-          <Menu.Item as={NavLink} to={"/import"}>
+          <Menu.Item>
             <Menu.Header>Import</Menu.Header>
             <Menu.Menu>
+              <Menu.Item as={NavLink} to={"/accounts"}>
+                Account overview
+              </Menu.Item>
               {ImportAccounts.map((x) => (
                 <Menu.Item key={x.path} as={NavLink} to={`/import/${x.path}`}>
                   <Image src={x.icon} inline rounded centered floated="right" style={{ width: "16px" }} />
@@ -25,7 +28,7 @@ const App: React.FC = () => {
               ))}
             </Menu.Menu>
           </Menu.Item>
-          <Menu.Item as={NavLink} to={"/report"}>
+          <Menu.Item>
             <Menu.Header>Reports</Menu.Header>
             <Menu.Menu>
               <Menu.Item as={NavLink} to={"/report/incomestatement"}>
@@ -40,7 +43,7 @@ const App: React.FC = () => {
         <div className="main">
           <Switch>
             <Route path="/import/:accountName" component={Import} />
-            <Route path="/import" component={AccountsComponent} />
+            <Route path="/accounts" component={AccountsComponent} />
             <Route path="/report/incomestatement" component={IncomeStatement} />
             <Route path="/report/networth" component={NetWorth} />
             <Route path="/" component={AccountsComponent} />
