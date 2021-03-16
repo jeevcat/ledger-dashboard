@@ -18,7 +18,7 @@ COPY . .
 RUN cargo install --path .
 
 # Stage 2: Production
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 RUN apt-get update && apt-get install -y locales libtinfo-dev libtinfo5 libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
 
