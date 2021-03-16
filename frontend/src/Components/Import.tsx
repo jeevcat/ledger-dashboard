@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Switch, Route, useHistory, useParams, useRouteMatch, Redirect, matchPath } from "react-router-dom";
-import { Header, Menu, Segment, MenuItemProps, Icon, Loader, Button } from "semantic-ui-react";
+import { matchPath, Redirect, Route, Switch, useHistory, useParams, useRouteMatch } from "react-router-dom";
+import { Button, Header, Icon, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
+import { ImportAccounts } from "../Models/ImportAccount";
+import { ImportRow, RealTransactionField } from "../Models/ImportRow";
 import {
+  getAccounts,
   getExistingTransactions,
   getGeneratedTransactions,
   getUnmatchedTransactions,
   writeGeneratedTransactions,
-  getAccounts,
 } from "../Utils/BackendRequester";
-import { TransactionTabs, Tab } from "./Transactions/TransactionTabs";
-import { ImportRow, RealTransactionField } from "../Models/ImportRow";
 import RulesModal from "./Rules/RulesModal";
-import { ImportAccounts } from "../Models/ImportAccount";
+import { Tab, TransactionTabs } from "./Transactions/TransactionTabs";
 
-enum TransactionTabType {
+export enum TransactionTabType {
   Recorded = "recorded",
   Generated = "generated",
   Unmatched = "unmatched",
@@ -125,8 +125,9 @@ export const Import: React.FC = () => {
 
   return (
     <div>
-      <Header textAlign="center" as="h1" style={{ marginTop: "1em" }}>
-        Import: {account.humanName}
+      <Header textAlign="center" as="h1" icon style={{ marginTop: "1em" }}>
+        <Image src={account.icon} circular />
+        <Header.Content>{account.humanName}</Header.Content>
       </Header>
       <Menu attached="top" tabular>
         {Object.keys(tabs).map((id) => (
