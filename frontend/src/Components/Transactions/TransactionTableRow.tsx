@@ -9,11 +9,18 @@ import RecordTransactionModal from "../RecordTransactionModal";
 interface Props {
   importRow: ImportRow;
   realTransactionFields: RealTransactionField[];
+  sourceAccount: string;
   accounts: string[];
   onTransactionWrite: () => void;
 }
 
-const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields, accounts, onTransactionWrite }) => {
+const TransactionTableRow: React.FC<Props> = ({
+  importRow,
+  realTransactionFields,
+  accounts,
+  sourceAccount,
+  onTransactionWrite,
+}) => {
   const formatField = (field: RealTransactionField) => {
     const val = importRow.real_transaction![field];
     const formatter = formatters[field];
@@ -56,6 +63,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
         {importRow.real_transaction && !importRow.recorded_transaction && (
           <RecordTransactionModal
             realTransaction={importRow.real_transaction}
+            sourceAccount={sourceAccount}
             accounts={accounts}
             onWrite={onTransactionWrite}
           />
@@ -69,7 +77,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
       )}
       {importRow.recorded_transaction && (
         <Table.Cell>
-          <GeneratedTransaction transaction={importRow.recorded_transaction!} />
+          <GeneratedTransaction transaction={importRow.recorded_transaction!} sourceAccount={sourceAccount} />
         </Table.Cell>
       )}
     </Table.Row>

@@ -37,6 +37,7 @@ interface Props {
   onTransactionWrite: () => void;
   filter: string;
   handleFilterChanged: (newFilter: string) => void;
+  sourceAccount: string;
   accounts: string[];
 }
 
@@ -46,6 +47,7 @@ export const TransactionTabs: React.FC<Props> = ({
   possibleColumns,
   filter,
   handleFilterChanged,
+  sourceAccount,
   accounts,
   onTransactionWrite,
 }) => {
@@ -99,6 +101,7 @@ export const TransactionTabs: React.FC<Props> = ({
           pageNum={pageNum}
           selectedFields={selectedFields}
           transactions={transactions}
+          sourceAccount={sourceAccount}
           accounts={accounts}
           onTransactionWrite={onTransactionWrite}
         />

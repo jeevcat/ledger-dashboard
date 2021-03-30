@@ -28,7 +28,7 @@ export interface Transaction {
 
 export const getAmount = (t: Transaction, account: string): number => {
   for (const p of t.tpostings ?? []) {
-    if (p.paccount.includes(account)) {
+    if (p.paccount.toLowerCase().includes(account.toLowerCase())) {
       return getPostingAmount(p);
     }
   }
@@ -46,5 +46,5 @@ export const getId = (t: Transaction): string | undefined => {
 export const getDate = (t: Transaction): string => asDate(t.tdate);
 
 export const getTargetAccount = (t: Transaction, sourceAccount: string): string | undefined => {
-  return t.tpostings?.find((p: Posting) => !p.paccount.includes(sourceAccount))?.paccount;
+  return t.tpostings?.find((p: Posting) => !p.paccount.toLowerCase().includes(sourceAccount.toLowerCase()))?.paccount;
 };

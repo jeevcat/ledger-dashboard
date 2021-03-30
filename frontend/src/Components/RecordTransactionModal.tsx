@@ -1,41 +1,26 @@
-import React, { useState, useCallback } from "react";
-import { Header, Modal, Button, Icon, Input, Loader, Grid } from "semantic-ui-react";
-import { Transaction } from "../Models/Transaction";
-import TransactionSummary from "./TransactionSummary";
-import GeneratedTransaction from "./Transactions/GeneratedTransaction";
-import { generateSingleTransaction } from "../Utils/BackendRequester";
-import LedgerAccountsDropdown from "./LedgerAccountsDropdown";
+import React, { useCallback, useState } from "react";
+import { Button, Icon, Modal } from "semantic-ui-react";
 import { RealTransaction } from "../Models/ImportRow";
+import { generateSingleTransaction } from "../Utils/BackendRequester";
+import RecordTransactionModalContent from "./RecordTransactionModalContent";
 
 interface Props {
   realTransaction: RealTransaction;
+  sourceAccount: string;
   accounts: string[];
   onWrite: () => void;
 }
 
-const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, onWrite }) => {
+const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, sourceAccount, onWrite }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [generatedTransaction, setGeneratedTransaction] = useState<Transaction | undefined>(undefined);
   const [account, setAccount] = useState("");
-  const [descriptionTemplate, setDescriptionTemplate] = useState(realTransaction.referenceText);
+  const [descriptionTemplate, setDescriptionTemplate] = useState("{{description}}");
 
   const generateTransaction = useCallback(
     (shouldWrite: boolean) =>
       generateSingleTransaction({ account, descriptionTemplate, sourceTransaction: realTransaction, shouldWrite }),
     [account, descriptionTemplate, realTransaction]
   );
-
-  const updatePreview = () => {
-    setGeneratedTransaction(undefined);
-    generateSingleTransaction({
-      account,
-      descriptionTemplate,
-      sourceTransaction: realTransaction,
-      shouldWrite: false,
-    }).then((response: Transaction) => {
-      setGeneratedTransaction(response);
-    });
-  };
 
   return (
     <Modal
@@ -45,45 +30,21 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, accounts, on
           icon="write"
           onClick={() => {
             setIsOpen(true);
-            updatePreview();
           }}
         />
       }
       open={isOpen}
     >
       <Modal.Header>Record transaction</Modal.Header>
-      <Modal.Content>
-        <Modal.Description>
-          <Header>Transaction summary</Header>
-          <TransactionSummary realTransaction={realTransaction} columns="3" />
-          <Header>Generated transaction</Header>
-          <Grid columns="2" divided verticalAlign="middle">
-            <Grid.Column>
-              <Input
-                fluid
-                value={descriptionTemplate}
-                label="Description"
-                onChange={(_: any, data: any) => {
-                  setDescriptionTemplate(data.value);
-                  updatePreview();
-                }}
-              />
-              <br />
-              <LedgerAccountsDropdown
-                account={account}
-                accounts={accounts}
-                onEdit={(newAccount: string) => {
-                  setAccount(newAccount);
-                  updatePreview();
-                }}
-              />
-            </Grid.Column>
-            <Grid.Column>
-              {generatedTransaction ? <GeneratedTransaction transaction={generatedTransaction} /> : <Loader />}
-            </Grid.Column>
-          </Grid>
-        </Modal.Description>
-      </Modal.Content>
+      <RecordTransactionModalContent
+        realTransaction={realTransaction}
+        sourceAccount={sourceAccount}
+        accounts={accounts}
+        account={account}
+        onAccountChange={setAccount}
+        descriptionTemplate={descriptionTemplate}
+        onDescriptionTemplateChange={setDescriptionTemplate}
+      />
       <Modal.Actions>
         <Button
           color="red"

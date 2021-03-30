@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 
 use crate::{
@@ -8,16 +6,8 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-#[serde(untagged)]
-enum SaltEdgeResponse<T> {
-    Data {
-        data: T,
-    },
-    Error {
-        error: serde_json::Value,
-        #[allow(dead_code)]
-        request: HashMap<String, String>,
-    },
+struct SaltEdgeResponse<T> {
+    data: T,
 }
 
 pub struct SaltEdge {
@@ -53,12 +43,8 @@ impl SaltEdge {
         let response = response
             .json::<SaltEdgeResponse<Vec<SaltEdgeTransaction>>>()
             .await
-            .unwrap();
-        match response {
-            SaltEdgeResponse::Error { error, .. } => {
-                panic!("Error fetching from Salt Edge: {:#}", error)
-            }
-            SaltEdgeResponse::Data { data } => return data,
-        };
+            .unwrap()
+            .data;
+        response
     }
 }

@@ -175,6 +175,7 @@ export const Import: React.FC = () => {
                 onTransactionWrite={fetchTransactions}
                 filter={filter}
                 handleFilterChanged={updateFilter}
+                sourceAccount={account.path}
                 accounts={accounts}
               />
             )}

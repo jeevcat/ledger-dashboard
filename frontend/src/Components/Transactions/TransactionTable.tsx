@@ -11,6 +11,7 @@ interface Props {
   transactions: ImportRow[];
   pageNum: number;
   selectedFields: Columns[];
+  sourceAccount: string;
   accounts: string[];
   onTransactionWrite: () => void;
 }
@@ -19,6 +20,7 @@ export const TransactionTable: React.FC<Props> = ({
   transactions,
   pageNum,
   selectedFields,
+  sourceAccount,
   accounts,
   onTransactionWrite,
 }) => {
@@ -93,6 +95,7 @@ export const TransactionTable: React.FC<Props> = ({
               key={r.real_transaction?.id}
               realTransactionFields={selectedFields}
               importRow={r}
+              sourceAccount={sourceAccount}
               accounts={accounts}
               onTransactionWrite={onTransactionWrite}
             />

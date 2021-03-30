@@ -1,9 +1,9 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::{Map, Value};
 
 use super::real_transaction::RealTransaction;
 
@@ -23,7 +23,19 @@ pub struct SaltEdgeTransaction {
     account_id: String,
     created_at: String,
     updated_at: String,
-    extra: HashMap<String, Value>,
+    #[serde(flatten, deserialize_with = "deserialize_extra")]
+    extra: Map<String, Value>,
+}
+
+fn deserialize_extra<'de, D>(deserializer: D) -> Result<Map<String, Value>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let helper = Map::<String, Value>::deserialize(deserializer)?;
+    if let Some(extra) = helper.get("extra") {
+        return Ok(extra.as_object().unwrap().clone());
+    }
+    Ok(helper)
 }
 
 impl RealTransaction for SaltEdgeTransaction {

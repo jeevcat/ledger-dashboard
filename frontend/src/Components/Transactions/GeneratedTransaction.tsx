@@ -9,16 +9,17 @@ const formatter = new Intl.NumberFormat("en-US", {
 
 interface Props {
   transaction: Transaction;
+  sourceAccount: string;
 }
 
-const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
-  const accountSections = getTargetAccount(transaction, "N26")
+const GeneratedTransaction: React.FC<Props> = ({ transaction, sourceAccount }) => {
+  const accountSections = getTargetAccount(transaction, sourceAccount)
     ?.split(":")
     .map((v) => {
       return { key: v, content: v };
     });
 
-  const amount = getAmount(transaction, "N26");
+  const amount = getAmount(transaction, sourceAccount);
 
   return (
     <Card fluid>
