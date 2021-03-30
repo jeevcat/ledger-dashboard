@@ -1,10 +1,10 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Debug};
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-pub trait RealTransaction: Serialize {
+pub trait RealTransaction: Serialize + Debug {
     fn get_id(&self) -> Cow<str>;
     fn get_date(&self) -> NaiveDate;
     fn get_amount(&self) -> Decimal;

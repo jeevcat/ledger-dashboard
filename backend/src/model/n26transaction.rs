@@ -25,6 +25,7 @@ impl RealTransaction for N26Transaction {
     }
 
     fn get_date(&self) -> NaiveDate {
+        // TODO: Write custom deserializer
         let s: i64 = self.visible_ts / 1000i64;
         NaiveDateTime::from_timestamp(s, 0).date()
     }

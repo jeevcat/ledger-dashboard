@@ -7,7 +7,7 @@ use std::{
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
 use log::error;
 
-use super::transactions_ib;
+use super::{transactions_ib, transactions_ing};
 use crate::{
     api::transactions_n26,
     hledger::Hledger,
@@ -40,6 +40,22 @@ pub fn transactions_routes() -> impl HttpServiceFactory {
         .route(
             "/write/n26",
             web::post().to(transactions_n26::write_generated_transactions),
+        )
+        .route(
+            "/existing/ing",
+            web::get().to(transactions_ing::get_existing_transactions),
+        )
+        .route(
+            "/generated/ing",
+            web::get().to(transactions_ing::get_generated_transactions),
+        )
+        .route(
+            "/unmatched/ing",
+            web::get().to(transactions_ing::get_unmatched_transactions),
+        )
+        .route(
+            "/write/ing",
+            web::post().to(transactions_ing::write_generated_transactions),
         )
         .route(
             "/existing/ib",

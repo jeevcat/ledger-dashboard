@@ -3,9 +3,12 @@ use std::{io, sync::Arc};
 use actix_cors::Cors;
 use actix_web::{middleware, App, HttpServer};
 
-use crate::{alpha_vantage, api, db, hledger, n26, prices};
+use crate::{alpha_vantage, api, db, hledger, n26, prices, saltedge};
 
-pub async fn run_server(db: Arc<db::Database>, n26: Arc<n26::N26>) -> io::Result<()> {
+pub async fn run_server() -> io::Result<()> {
+    let db = Arc::new(db::Database::new());
+    let n26 = Arc::new(n26::N26::new(db.clone()));
+    let saltedge = Arc::new(saltedge::SaltEdge::new());
     let hledger = Arc::new(hledger::Hledger::new());
     let alpha_vantage = Arc::new(alpha_vantage::AlphaVantage::new());
     let prices = Arc::new(prices::Prices::new(alpha_vantage.clone()));
@@ -22,6 +25,7 @@ pub async fn run_server(db: Arc<db::Database>, n26: Arc<n26::N26>) -> io::Result
                     .allow_any_header(),
             )
             .data(n26.clone())
+            .data(saltedge.clone())
             .data(hledger.clone())
             .data(db.clone())
             .data(prices.clone())
