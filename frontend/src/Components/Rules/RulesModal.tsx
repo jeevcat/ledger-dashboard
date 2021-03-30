@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Icon, Loader, Modal } from "semantic-ui-react";
-import { Rule } from "../../Models/Rule";
-import { getRules, deleteRule, setRule } from "../../Utils/BackendRequester";
-import RulesTable from "./RulesTable";
 import { RealTransactionField } from "../../Models/ImportRow";
+import { Rule } from "../../Models/Rule";
+import { deleteRule, getRules, setRule } from "../../Utils/BackendRequester";
+import RulesTable from "./RulesTable";
 
 interface Props {
   onRulesFetched: () => void;
@@ -88,7 +88,7 @@ const RulesModal: React.FC<Props> = ({ onRulesFetched, realTransactionFields, ac
 
   return (
     <Modal
-      size="large"
+      size="fullscreen"
       onClose={() => setRulesOpen(false)}
       onOpen={() => setRulesOpen(true)}
       open={rulesOpen}

@@ -1,9 +1,9 @@
 import React from "react";
-import { Table, Container, Button, Icon } from "semantic-ui-react";
-import RuleComponent from "./Rule";
+import { Button, Container, Icon, Table } from "semantic-ui-react";
+import { RealTransactionField } from "../../Models/ImportRow";
 import { Rule } from "../../Models/Rule";
 import { setRule } from "../../Utils/BackendRequester";
-import { RealTransactionField } from "../../Models/ImportRow";
+import RuleComponent from "./Rule";
 
 type RuleErrors = { [rule: number]: string | undefined };
 
@@ -39,6 +39,22 @@ const RulesTable: React.FC<Props> = ({
     setRule(rule).then(onUpdateNeeded);
   };
 
+  const ruleSort = (a: Rule, b: Rule) => {
+    if (a.priority < b.priority) {
+      return -1;
+    }
+    if (a.priority > b.priority) {
+      return 1;
+    }
+    if (a.ruleName < b.ruleName) {
+      return -1;
+    }
+    if (a.ruleName > b.ruleName) {
+      return 1;
+    }
+    return 0;
+  };
+
   return (
     <Container fluid>
       <Table>
@@ -54,7 +70,7 @@ const RulesTable: React.FC<Props> = ({
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {rules.map((r, index) => (
+          {rules.sort(ruleSort).map((r, index) => (
             <RuleComponent
               key={index}
               rule={r}
