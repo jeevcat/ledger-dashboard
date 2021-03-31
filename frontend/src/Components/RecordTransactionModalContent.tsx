@@ -9,7 +9,7 @@ import TransactionSummary from "./TransactionSummary";
 
 interface Props {
   realTransaction: RealTransaction;
-  sourceAccount: string;
+  importAccount: string;
   accounts: string[];
   account: string;
   onAccountChange(account: string): void;
@@ -20,7 +20,7 @@ interface Props {
 const RecordTransactionModalContent: React.FC<Props> = ({
   realTransaction,
   accounts,
-  sourceAccount,
+  importAccount,
   account,
   onAccountChange,
   descriptionTemplate,
@@ -71,7 +71,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
           </Grid.Column>
           <Grid.Column>
             {generatedTransaction ? (
-              <GeneratedTransaction transaction={generatedTransaction} sourceAccount={sourceAccount} />
+              <GeneratedTransaction transaction={generatedTransaction} importAccount={importAccount} />
             ) : (
               <Loader />
             )}

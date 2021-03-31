@@ -2,8 +2,14 @@ use std::sync::Arc;
 
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
 use log::{error, info};
+use serde::Deserialize;
 
 use crate::{db::Database, model::rule::Rule};
+
+#[derive(Deserialize)]
+struct RulesFilter {
+    import_account: Option<String>,
+}
 
 pub fn rules_routes() -> impl HttpServiceFactory {
     web::resource("/rules")
@@ -23,15 +29,12 @@ pub fn rule_routes() -> impl HttpServiceFactory {
         .route(web::delete().to(delete_rule))
 }
 
-async fn rules_get(db: web::Data<Arc<Database>>) -> HttpResponse {
-    HttpResponse::Ok().json(db.get_all_rules())
+async fn rules_get(query: web::Query<RulesFilter>, db: web::Data<Arc<Database>>) -> HttpResponse {
+    HttpResponse::Ok().json(db.get_all_rules(query.import_account.as_deref()))
 }
 
-async fn rules_add(item: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse {
-    info!("Adding rule: {:?}", &item);
-    let rule = item.0;
-    db.create_or_update_rule(rule);
-
+async fn rules_add(rule: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse {
+    db.create_or_update_rule(rule.into_inner());
     HttpResponse::Ok().finish()
 }
 

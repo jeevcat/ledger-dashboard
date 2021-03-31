@@ -20,7 +20,7 @@ export const writeGeneratedTransactions = (account: ImportAccount) => post(`tran
 
 export const generateSingleTransaction = (request: TransactionRequest) => post("transactions/new", request);
 
-export const getRules = (): Promise<Rule[]> => get("rules");
+export const getRules = (importAccount: string): Promise<Rule[]> => get("rules", { import_account: importAccount });
 
 export const setRule = (rule: Rule): Promise<any> => post("rules", rule);
 
@@ -28,11 +28,12 @@ export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
 
-const makeUrl = (url: string) => `${host}/${url}`;
+const makeUrl = (url: string, query?: Record<string, string>) =>
+  query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;
 
-const get = <T>(url: string): Promise<T> => {
+const get = <T>(url: string, query?: Record<string, string>): Promise<T> => {
   console.log(url);
-  return fetch(makeUrl(url)).then((response) => {
+  return fetch(makeUrl(url, query)).then((response) => {
     if (!response.ok) {
       throw new Error(response.statusText);
     }

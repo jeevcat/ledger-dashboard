@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Table } from "semantic-ui-react";
-import TransactionTableRow from "./TransactionTableRow";
 import { ImportRow, RealTransaction } from "../../Models/ImportRow";
-import { toTitleCase } from "../../Utils/TextUtils";
 import { maxTransactionsPerPage } from "../../Utils/Config";
+import { toTitleCase } from "../../Utils/TextUtils";
+import TransactionTableRow from "./TransactionTableRow";
 
 type Columns = keyof RealTransaction;
 
@@ -11,7 +11,7 @@ interface Props {
   transactions: ImportRow[];
   pageNum: number;
   selectedFields: Columns[];
-  sourceAccount: string;
+  importAccount: string;
   accounts: string[];
   onTransactionWrite: () => void;
 }
@@ -20,7 +20,7 @@ export const TransactionTable: React.FC<Props> = ({
   transactions,
   pageNum,
   selectedFields,
-  sourceAccount,
+  importAccount,
   accounts,
   onTransactionWrite,
 }) => {
@@ -95,7 +95,7 @@ export const TransactionTable: React.FC<Props> = ({
               key={r.real_transaction?.id}
               realTransactionFields={selectedFields}
               importRow={r}
-              sourceAccount={sourceAccount}
+              importAccount={importAccount}
               accounts={accounts}
               onTransactionWrite={onTransactionWrite}
             />

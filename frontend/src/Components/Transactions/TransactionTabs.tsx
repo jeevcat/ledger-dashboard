@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useHistory, useParams, useRouteMatch } from "react-router-dom";
 import {
   Container,
+  Dropdown,
   Icon,
-  Statistic,
-  Segment,
+  Input,
+  Menu,
   Pagination,
   PaginationProps,
-  Menu,
-  Dropdown,
-  Input,
+  Segment,
+  Statistic,
 } from "semantic-ui-react";
-import { ImportRow, RealTransactionField } from "../../Models/ImportRow";
 import { SemanticICONS } from "semantic-ui-react/dist/commonjs/generic";
-import { useParams, useHistory, useRouteMatch } from "react-router-dom";
+import { ImportAccount } from "../../Models/ImportAccount";
+import { ImportRow, RealTransactionField } from "../../Models/ImportRow";
+import { maxTransactionsPerPage } from "../../Utils/Config";
 import { toTitleCase } from "../../Utils/TextUtils";
 import { TransactionTable } from "./TransactionTable";
-import { maxTransactionsPerPage } from "../../Utils/Config";
-import { ImportAccount } from "../../Models/ImportAccount";
 
 export interface Tab {
   name: string;
@@ -37,7 +37,7 @@ interface Props {
   onTransactionWrite: () => void;
   filter: string;
   handleFilterChanged: (newFilter: string) => void;
-  sourceAccount: string;
+  importAccount: string;
   accounts: string[];
 }
 
@@ -47,7 +47,7 @@ export const TransactionTabs: React.FC<Props> = ({
   possibleColumns,
   filter,
   handleFilterChanged,
-  sourceAccount,
+  importAccount,
   accounts,
   onTransactionWrite,
 }) => {
@@ -101,7 +101,7 @@ export const TransactionTabs: React.FC<Props> = ({
           pageNum={pageNum}
           selectedFields={selectedFields}
           transactions={transactions}
-          sourceAccount={sourceAccount}
+          importAccount={importAccount}
           accounts={accounts}
           onTransactionWrite={onTransactionWrite}
         />

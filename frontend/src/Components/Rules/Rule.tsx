@@ -65,8 +65,8 @@ const RuleComponent: React.FC<Props> = React.memo(
         <Table.Cell verticalAlign="top">{ruleInput("matchFieldRegex", error)}</Table.Cell>
         <Table.Cell verticalAlign="top">
           <LedgerAccountsDropdown
-            account={rule.account}
-            onEdit={(newAccount: string) => onEdit(rule.id, "account", newAccount)}
+            account={rule.targetAccount}
+            onEdit={(newAccount: string) => onEdit(rule.id, "targetAccount", newAccount)}
             accounts={accounts}
           />
         </Table.Cell>

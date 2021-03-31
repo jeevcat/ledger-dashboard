@@ -7,7 +7,7 @@ use crate::{
     db::Database,
     hledger::Hledger,
     model::{
-        real_transaction::RealTransaction, recorded_transaction::RecordedTransaction,
+        real_transaction::RealTransaction, recorded_transaction::RecordedTransaction, rule::Rule,
         transaction_response::TransactionResponse,
     },
     saltedge::SaltEdge,
@@ -47,7 +47,7 @@ pub async fn get_generated_transactions(
     let recorded_transactions: TransactionCollection = hledger.get_transactions(ING_ACCOUNTS).await;
 
     // Get rules
-    let rules = db.get_all_rules();
+    let rules = get_rules(&db);
 
     let generated = transactions::get_generated_transactions(
         &recorded_transactions,
@@ -70,7 +70,7 @@ pub async fn write_generated_transactions(
     let hledger_transactions: TransactionCollection = hledger.get_transactions(ING_ACCOUNTS).await;
 
     // Get rules
-    let rules = db.get_all_rules();
+    let rules = get_rules(&db);
 
     let mut generated: Vec<RecordedTransaction> =
         transactions::get_generated_transactions(&hledger_transactions, &real_transactions, &rules)
@@ -104,7 +104,7 @@ pub async fn get_unmatched_transactions(
     let recorded_ids: HashSet<&str> = hledger_transactions.iter().flat_map(|t| t.ids()).collect();
 
     // Get rules
-    let rules = db.get_all_rules();
+    let rules = get_rules(&db);
 
     let unmatched: Vec<TransactionResponse> = real_transactions
         .into_iter()
@@ -120,4 +120,8 @@ pub async fn get_unmatched_transactions(
         .collect();
 
     HttpResponse::Ok().json(unmatched)
+}
+
+fn get_rules(db: &Database) -> Vec<Rule> {
+    db.get_all_rules(Some(ING_ACCOUNTS[0]))
 }

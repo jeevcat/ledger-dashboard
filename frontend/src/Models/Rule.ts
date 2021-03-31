@@ -4,6 +4,7 @@ export interface Rule {
   ruleName: string;
   matchFieldName: string;
   matchFieldRegex: string;
-  account: string;
+  importAccount: string;
+  targetAccount: string;
   descriptionTemplate: string;
 }

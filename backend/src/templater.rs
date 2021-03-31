@@ -79,7 +79,7 @@ mod tests {
         static ref RULE: Rule = Rule {
             match_field_name: "partnerName".to_string(),
             match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            account: "Expenses:Personal:Entertainment".to_string(),
+            target_account: "Expenses:Personal:Entertainment".to_string(),
             description_template: "Test description for {{{partnerName}}}".to_string(),
             ..Rule::default()
         };

@@ -14,7 +14,8 @@ pub struct Rule {
     pub match_field_name: String,
     #[serde(with = "serde_regex")]
     pub match_field_regex: Regex,
-    pub account: String,
+    pub import_account: String,
+    pub target_account: String,
     pub description_template: String,
 }
 
@@ -26,7 +27,8 @@ impl Default for Rule {
             rule_name: Default::default(),
             match_field_name: Default::default(),
             match_field_regex: Regex::new("$^").unwrap(),
-            account: Default::default(),
+            import_account: Default::default(),
+            target_account: Default::default(),
             description_template: Default::default(),
         }
     }
@@ -57,7 +59,7 @@ impl Rule {
         Some(RecordedTransaction::new_with_postings(
             real_transaction,
             &description,
-            &self.account,
+            &self.target_account,
         ))
     }
 }
@@ -85,7 +87,7 @@ mod tests {
         static ref RULE: Rule = Rule {
             match_field_name: "partnerName".to_string(),
             match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            account: "Expenses:Personal:Entertainment".to_string(),
+            target_account: "Expenses:Personal:Entertainment".to_string(),
             description_template: "Test description for {{{partnerName}}}".to_string(),
             ..Rule::default()
         };

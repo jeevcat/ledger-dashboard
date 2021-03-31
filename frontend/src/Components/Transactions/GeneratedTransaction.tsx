@@ -1,6 +1,6 @@
 import React from "react";
-import { Transaction, getDate, getAmount, getTargetAccount } from "../../Models/Transaction";
-import { Label, Card, Breadcrumb } from "semantic-ui-react";
+import { Breadcrumb, Card, Label } from "semantic-ui-react";
+import { getAmount, getDate, getTargetAccount, Transaction } from "../../Models/Transaction";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -9,17 +9,17 @@ const formatter = new Intl.NumberFormat("en-US", {
 
 interface Props {
   transaction: Transaction;
-  sourceAccount: string;
+  importAccount: string;
 }
 
-const GeneratedTransaction: React.FC<Props> = ({ transaction, sourceAccount }) => {
-  const accountSections = getTargetAccount(transaction, sourceAccount)
+const GeneratedTransaction: React.FC<Props> = ({ transaction, importAccount }) => {
+  const accountSections = getTargetAccount(transaction, importAccount)
     ?.split(":")
     .map((v) => {
       return { key: v, content: v };
     });
 
-  const amount = getAmount(transaction, sourceAccount);
+  const amount = getAmount(transaction, importAccount);
 
   return (
     <Card fluid>

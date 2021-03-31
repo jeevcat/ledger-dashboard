@@ -142,8 +142,9 @@ export const Import: React.FC = () => {
         ))}
         <Menu.Item position="right">
           <RulesModal
-            onRulesFetched={fetchTransactions}
+            onRulesChanged={fetchTransactions}
             realTransactionFields={realTransactionFields}
+            importAccount={account.path}
             accounts={accounts}
           />
           <Button
@@ -175,7 +176,7 @@ export const Import: React.FC = () => {
                 onTransactionWrite={fetchTransactions}
                 filter={filter}
                 handleFilterChanged={updateFilter}
-                sourceAccount={account.path}
+                importAccount={account.path}
                 accounts={accounts}
               />
             )}

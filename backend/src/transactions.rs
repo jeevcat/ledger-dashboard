@@ -83,7 +83,7 @@ mod tests {
         static ref RULES: Vec<Rule> = vec![Rule {
             match_field_name: "partnerName".to_string(),
             match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            account: "Expenses:Personal:Fun".to_string(),
+            target_account: "Expenses:Personal:Fun".to_string(),
             description_template: "Test {{{partnerName}}} with {{{referenceText}}}".to_string(),
             ..Rule::default()
         }];

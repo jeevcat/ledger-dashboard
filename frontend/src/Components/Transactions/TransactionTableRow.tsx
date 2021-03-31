@@ -1,15 +1,15 @@
 import React from "react";
-import { Table, Label, Popup, Button } from "semantic-ui-react";
-import GeneratedTransaction from "./GeneratedTransaction";
+import { Button, Label, Popup, Table } from "semantic-ui-react";
 import { ImportRow, RealTransaction, RealTransactionField } from "../../Models/ImportRow";
-import { asEuro, asDate, asCurrency } from "../../Utils/TextUtils";
-import TransactionSummary from "../TransactionSummary";
+import { asCurrency, asDate, asEuro } from "../../Utils/TextUtils";
 import RecordTransactionModal from "../RecordTransactionModal";
+import TransactionSummary from "../TransactionSummary";
+import GeneratedTransaction from "./GeneratedTransaction";
 
 interface Props {
   importRow: ImportRow;
   realTransactionFields: RealTransactionField[];
-  sourceAccount: string;
+  importAccount: string;
   accounts: string[];
   onTransactionWrite: () => void;
 }
@@ -18,7 +18,7 @@ const TransactionTableRow: React.FC<Props> = ({
   importRow,
   realTransactionFields,
   accounts,
-  sourceAccount,
+  importAccount,
   onTransactionWrite,
 }) => {
   const formatField = (field: RealTransactionField) => {
@@ -63,7 +63,7 @@ const TransactionTableRow: React.FC<Props> = ({
         {importRow.real_transaction && !importRow.recorded_transaction && (
           <RecordTransactionModal
             realTransaction={importRow.real_transaction}
-            sourceAccount={sourceAccount}
+            importAccount={importAccount}
             accounts={accounts}
             onWrite={onTransactionWrite}
           />
@@ -77,7 +77,7 @@ const TransactionTableRow: React.FC<Props> = ({
       )}
       {importRow.recorded_transaction && (
         <Table.Cell>
-          <GeneratedTransaction transaction={importRow.recorded_transaction!} sourceAccount={sourceAccount} />
+          <GeneratedTransaction transaction={importRow.recorded_transaction!} importAccount={importAccount} />
         </Table.Cell>
       )}
     </Table.Row>

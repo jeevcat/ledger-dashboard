@@ -48,10 +48,22 @@ impl Database {
         self.rules.save().unwrap();
     }
 
-    pub fn get_all_rules(&self) -> Vec<Rule> {
+    pub fn get_all_rules(&self, import_account: Option<&str>) -> Vec<Rule> {
         self.rules
             .read(|db| {
-                let mut rules: Vec<Rule> = db.iter().map(|(_, rule)| rule).cloned().collect();
+                let mut rules: Vec<Rule> = db
+                    .iter()
+                    .filter_map(|(_, rule)| {
+                        if let Some(acc) = import_account {
+                            if !rule.import_account.eq(acc) {
+                                return None;
+                            }
+                        }
+                        Some(rule)
+                    })
+                    // TODO: Can this cloned() be removed?
+                    .cloned()
+                    .collect();
                 rules.sort_by(|a, b| a.priority.partial_cmp(&b.priority).unwrap());
                 rules
             })

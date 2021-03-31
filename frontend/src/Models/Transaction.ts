@@ -45,6 +45,6 @@ export const getId = (t: Transaction): string | undefined => {
 
 export const getDate = (t: Transaction): string => asDate(t.tdate);
 
-export const getTargetAccount = (t: Transaction, sourceAccount: string): string | undefined => {
-  return t.tpostings?.find((p: Posting) => !p.paccount.toLowerCase().includes(sourceAccount.toLowerCase()))?.paccount;
+export const getTargetAccount = (t: Transaction, importAccount: string): string | undefined => {
+  return t.tpostings?.find((p: Posting) => !p.paccount.toLowerCase().includes(importAccount.toLowerCase()))?.paccount;
 };
