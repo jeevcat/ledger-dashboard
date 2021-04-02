@@ -1,26 +1,28 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Button, Icon, Loader, Modal } from "semantic-ui-react";
 import { RealTransactionField } from "../../Models/ImportRow";
 import { Rule } from "../../Models/Rule";
+import { AccountsContext } from "../../Utils/AccountsContext";
 import { deleteRule, getRules, setRule } from "../../Utils/BackendRequester";
 import RulesTable from "./RulesTable";
 
 interface Props {
   onRulesChanged: () => void;
   realTransactionFields: RealTransactionField[];
-  importAccount: string;
 }
 
 const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 
 type RuleErrors = { [rule: number]: string | undefined };
 
-const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, importAccount }) => {
+const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) => {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [isLoadingRules, setIsLoadingRules] = useState(false);
   const [dirtyRules, setDirtyRules] = useState<number[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [errors, setErrors] = useState<RuleErrors>({});
+
+  const { importAccount } = useContext(AccountsContext);
 
   // Don't fully get this syntax yet: https://github.com/microsoft/TypeScript/issues/24197#issuecomment-389928513
   const handleRuleEdit = <K extends keyof Rule>(id: number, field: K, value: any) => {
@@ -75,7 +77,7 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, im
       priority: 100,
       ruleName: "NEW RULE",
       matchFieldName: "description",
-      importAccount,
+      importAccount: importAccount.path,
       targetAccount: "",
       descriptionTemplate: "{{description}}",
       matchFieldRegex: "$^",
@@ -85,7 +87,7 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, im
 
   const fetchRules = useCallback(() => {
     setIsLoadingRules(true);
-    getRules(importAccount).then((data: Rule[]) => {
+    getRules(importAccount.path).then((data: Rule[]) => {
       setRules(data);
       setIsLoadingRules(false);
     });

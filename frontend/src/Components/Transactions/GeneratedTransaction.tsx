@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Breadcrumb, Card, Label } from "semantic-ui-react";
 import { getAmount, getDate, getTargetAccount, Transaction } from "../../Models/Transaction";
+import { AccountsContext } from "../../Utils/AccountsContext";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -9,17 +10,18 @@ const formatter = new Intl.NumberFormat("en-US", {
 
 interface Props {
   transaction: Transaction;
-  importAccount: string;
 }
 
-const GeneratedTransaction: React.FC<Props> = ({ transaction, importAccount }) => {
-  const accountSections = getTargetAccount(transaction, importAccount)
+const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
+  const { importAccount } = useContext(AccountsContext);
+
+  const accountSections = getTargetAccount(transaction, importAccount.path)
     ?.split(":")
     .map((v) => {
       return { key: v, content: v };
     });
 
-  const amount = getAmount(transaction, importAccount);
+  const amount = getAmount(transaction, importAccount.path);
 
   return (
     <Card fluid>

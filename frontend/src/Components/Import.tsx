@@ -114,7 +114,7 @@ export const Import: React.FC = () => {
 
   return (
     <div>
-      <AccountsContextComponent>
+      <AccountsContextComponent importAccount={account}>
         <Header textAlign="center" as="h1" icon style={{ marginTop: "1em" }}>
           <Image src={account.icon} circular />
           <Header.Content>{account.humanName}</Header.Content>
@@ -131,11 +131,7 @@ export const Import: React.FC = () => {
             />
           ))}
           <Menu.Item position="right">
-            <RulesModal
-              onRulesChanged={fetchTransactions}
-              realTransactionFields={realTransactionFields}
-              importAccount={account.path}
-            />
+            <RulesModal onRulesChanged={fetchTransactions} realTransactionFields={realTransactionFields} />
             <Button
               primary
               basic
@@ -165,7 +161,6 @@ export const Import: React.FC = () => {
                   onTransactionWrite={fetchTransactions}
                   filter={filter}
                   handleFilterChanged={updateFilter}
-                  importAccount={account.path}
                 />
               )}
             </Route>

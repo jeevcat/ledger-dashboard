@@ -11,17 +11,10 @@ interface Props {
   transactions: ImportRow[];
   pageNum: number;
   selectedFields: Columns[];
-  importAccount: string;
   onTransactionWrite: () => void;
 }
 
-export const TransactionTable: React.FC<Props> = ({
-  transactions,
-  pageNum,
-  selectedFields,
-  importAccount,
-  onTransactionWrite,
-}) => {
+export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selectedFields, onTransactionWrite }) => {
   const [sortedColumn, setSortedColumn] = useState<Columns>("visibleTS");
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending" | undefined>(undefined);
 
@@ -93,7 +86,6 @@ export const TransactionTable: React.FC<Props> = ({
               key={r.real_transaction?.id}
               realTransactionFields={selectedFields}
               importRow={r}
-              importAccount={importAccount}
               onTransactionWrite={onTransactionWrite}
             />
           ))}

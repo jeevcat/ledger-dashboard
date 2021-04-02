@@ -6,11 +6,10 @@ import RecordTransactionModalContent from "./RecordTransactionModalContent";
 
 interface Props {
   realTransaction: RealTransaction;
-  importAccount: string;
   onWrite: () => void;
 }
 
-const RecordTransactionModal: React.FC<Props> = ({ realTransaction, importAccount, onWrite }) => {
+const RecordTransactionModal: React.FC<Props> = ({ realTransaction, onWrite }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [account, setAccount] = useState("");
   const [descriptionTemplate, setDescriptionTemplate] = useState("{{description}}");
@@ -37,7 +36,6 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, importAccoun
       <Modal.Header>Record transaction</Modal.Header>
       <RecordTransactionModalContent
         realTransaction={realTransaction}
-        importAccount={importAccount}
         account={account}
         onAccountChange={setAccount}
         descriptionTemplate={descriptionTemplate}

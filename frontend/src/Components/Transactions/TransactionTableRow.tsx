@@ -9,16 +9,10 @@ import GeneratedTransaction from "./GeneratedTransaction";
 interface Props {
   importRow: ImportRow;
   realTransactionFields: RealTransactionField[];
-  importAccount: string;
   onTransactionWrite: () => void;
 }
 
-const TransactionTableRow: React.FC<Props> = ({
-  importRow,
-  realTransactionFields,
-  importAccount,
-  onTransactionWrite,
-}) => {
+const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields, onTransactionWrite }) => {
   const formatField = (field: RealTransactionField) => {
     const val = importRow.real_transaction![field];
     const formatter = formatters[field];
@@ -59,11 +53,7 @@ const TransactionTableRow: React.FC<Props> = ({
           trigger={<Button icon="info" />}
         />
         {importRow.real_transaction && !importRow.recorded_transaction && (
-          <RecordTransactionModal
-            realTransaction={importRow.real_transaction}
-            importAccount={importAccount}
-            onWrite={onTransactionWrite}
-          />
+          <RecordTransactionModal realTransaction={importRow.real_transaction} onWrite={onTransactionWrite} />
         )}
       </Table.Cell>
       {realTransactionFields.map(real_transaction_cell)}
@@ -74,7 +64,7 @@ const TransactionTableRow: React.FC<Props> = ({
       )}
       {importRow.recorded_transaction && (
         <Table.Cell>
-          <GeneratedTransaction transaction={importRow.recorded_transaction!} importAccount={importAccount} />
+          <GeneratedTransaction transaction={importRow.recorded_transaction!} />
         </Table.Cell>
       )}
     </Table.Row>
