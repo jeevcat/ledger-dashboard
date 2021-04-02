@@ -13,7 +13,6 @@ interface Props {
   rules: Rule[];
   errors: RuleErrors;
   ruleFields: RealTransactionField[];
-  accounts: string[];
 }
 
 const RulesTable: React.FC<Props> = ({
@@ -23,7 +22,6 @@ const RulesTable: React.FC<Props> = ({
   rules,
   errors,
   ruleFields,
-  accounts,
 }) => {
   const ruleSort = (a: Rule, b: Rule) => {
     if (a.priority < b.priority) {
@@ -64,7 +62,6 @@ const RulesTable: React.FC<Props> = ({
               onEdit={onEditRuleRequested}
               onDelete={onDeleteRuleRequested}
               ruleFields={ruleFields}
-              accounts={accounts}
             />
           ))}
           <Table.Row>

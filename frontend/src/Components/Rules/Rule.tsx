@@ -11,11 +11,10 @@ interface Props {
   onEdit: (id: number, field: keyof Rule, value: string) => void;
   onDelete(rule: Rule): void;
   ruleFields: RealTransactionField[];
-  accounts: string[];
 }
 
 const RuleComponent: React.FC<Props> = React.memo(
-  ({ rule, error, onEdit, onDelete, ruleFields, accounts }) => {
+  ({ rule, error, onEdit, onDelete, ruleFields }) => {
     const ruleInput = (field: keyof Rule, error?: string) => {
       const input = (
         <Input
@@ -67,7 +66,6 @@ const RuleComponent: React.FC<Props> = React.memo(
           <LedgerAccountsDropdown
             account={rule.targetAccount}
             onEdit={(newAccount: string) => onEdit(rule.id, "targetAccount", newAccount)}
-            accounts={accounts}
           />
         </Table.Cell>
         <Table.Cell verticalAlign="top">{ruleInput("descriptionTemplate")}</Table.Cell>

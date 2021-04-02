@@ -10,7 +10,6 @@ import TransactionSummary from "./TransactionSummary";
 interface Props {
   realTransaction: RealTransaction;
   importAccount: string;
-  accounts: string[];
   account: string;
   onAccountChange(account: string): void;
   descriptionTemplate: string;
@@ -19,7 +18,6 @@ interface Props {
 
 const RecordTransactionModalContent: React.FC<Props> = ({
   realTransaction,
-  accounts,
   importAccount,
   account,
   onAccountChange,
@@ -63,7 +61,6 @@ const RecordTransactionModalContent: React.FC<Props> = ({
             <br />
             <LedgerAccountsDropdown
               account={account}
-              accounts={accounts}
               onEdit={(newAccount: string) => {
                 onAccountChange(newAccount);
               }}

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
-use log::{error, info};
+use log::error;
 use serde::Deserialize;
 
 use crate::{db::Database, model::rule::Rule};

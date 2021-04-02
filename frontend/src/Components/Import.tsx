@@ -3,8 +3,8 @@ import { matchPath, Redirect, Route, Switch, useHistory, useParams, useRouteMatc
 import { Button, Header, Icon, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
 import { ImportAccounts } from "../Models/ImportAccount";
 import { ImportRow, RealTransactionField } from "../Models/ImportRow";
+import { AccountsContextComponent } from "../Utils/AccountsContext";
 import {
-  getAccounts,
   getExistingTransactions,
   getGeneratedTransactions,
   getUnmatchedTransactions,
@@ -55,16 +55,11 @@ export const Import: React.FC = () => {
   const [transactions, setTransactions] = useState<ImportRow[]>([]);
   const [realTransactionFields, setRealTransactionFields] = useState<RealTransactionField[]>([]);
   const [filter, setFilter] = useState("");
-  const [accounts, setAccounts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId]);
-
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
 
   const handleTabClick = (_: any, data: MenuItemProps) => {
     history.push(url + "/" + data.id);
@@ -105,12 +100,6 @@ export const Import: React.FC = () => {
         : true
     );
 
-  const fetchAccounts = () => {
-    getAccounts().then((data: string[]) => {
-      setAccounts(data);
-    });
-  };
-
   const accountPath = matchPath<{ accountName: string }>(url, {
     path: path,
   })?.params.accountName!;
@@ -125,65 +114,65 @@ export const Import: React.FC = () => {
 
   return (
     <div>
-      <Header textAlign="center" as="h1" icon style={{ marginTop: "1em" }}>
-        <Image src={account.icon} circular />
-        <Header.Content>{account.humanName}</Header.Content>
-      </Header>
-      <Menu attached="top" tabular>
-        {Object.keys(tabs).map((id) => (
-          <Menu.Item
-            key={id}
-            id={id}
-            icon={tabs[id as TransactionTabType].icon}
-            name={tabs[id as TransactionTabType].name}
-            active={id === tabId}
-            onClick={handleTabClick}
-          />
-        ))}
-        <Menu.Item position="right">
-          <RulesModal
-            onRulesChanged={fetchTransactions}
-            realTransactionFields={realTransactionFields}
-            importAccount={account.path}
-            accounts={accounts}
-          />
-          <Button
-            primary
-            basic
-            icon
-            labelPosition="right"
-            onClick={() => {
-              writeGeneratedTransactions(account).then(fetchTransactions);
-            }}
-          >
-            Record generated transactions
-            <Icon name="file" />
-          </Button>
-        </Menu.Item>
-      </Menu>
+      <AccountsContextComponent>
+        <Header textAlign="center" as="h1" icon style={{ marginTop: "1em" }}>
+          <Image src={account.icon} circular />
+          <Header.Content>{account.humanName}</Header.Content>
+        </Header>
+        <Menu attached="top" tabular>
+          {Object.keys(tabs).map((id) => (
+            <Menu.Item
+              key={id}
+              id={id}
+              icon={tabs[id as TransactionTabType].icon}
+              name={tabs[id as TransactionTabType].name}
+              active={id === tabId}
+              onClick={handleTabClick}
+            />
+          ))}
+          <Menu.Item position="right">
+            <RulesModal
+              onRulesChanged={fetchTransactions}
+              realTransactionFields={realTransactionFields}
+              importAccount={account.path}
+            />
+            <Button
+              primary
+              basic
+              icon
+              labelPosition="right"
+              onClick={() => {
+                writeGeneratedTransactions(account).then(fetchTransactions);
+              }}
+            >
+              Record generated transactions
+              <Icon name="file" />
+            </Button>
+          </Menu.Item>
+        </Menu>
 
-      <Segment attached="bottom">
-        <Switch>
-          <Route path={`${path}/:tabId/:page?`}>
-            {areTransactionsLoading ? (
-              <Loader active />
-            ) : (
-              <TransactionTabs
-                transactions={getFilteredTransactions()}
-                defaultColumns={account.defaultColumns}
-                possibleColumns={realTransactionFields}
-                onRuleSaved={fetchTransactions}
-                onTransactionWrite={fetchTransactions}
-                filter={filter}
-                handleFilterChanged={updateFilter}
-                importAccount={account.path}
-                accounts={accounts}
-              />
-            )}
-          </Route>
-          <Redirect to={`${path}/recorded`} />
-        </Switch>
-      </Segment>
+        <Segment attached="bottom">
+          <Switch>
+            <Route path={`${path}/:tabId/:page?`}>
+              {areTransactionsLoading ? (
+                <Loader active />
+              ) : (
+                <TransactionTabs
+                  transactions={getFilteredTransactions()}
+                  defaultColumns={account.defaultColumns}
+                  possibleColumns={realTransactionFields}
+                  onRuleSaved={fetchTransactions}
+                  onTransactionWrite={fetchTransactions}
+                  filter={filter}
+                  handleFilterChanged={updateFilter}
+                  importAccount={account.path}
+                />
+              )}
+            </Route>
+            <Redirect to={`${path}/recorded`} />
+          </Switch>
+        </Segment>
+      </AccountsContextComponent>
     </div>
   );
 };

@@ -9,14 +9,13 @@ interface Props {
   onRulesChanged: () => void;
   realTransactionFields: RealTransactionField[];
   importAccount: string;
-  accounts: string[];
 }
 
 const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 
 type RuleErrors = { [rule: number]: string | undefined };
 
-const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, importAccount, accounts }) => {
+const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, importAccount }) => {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [isLoadingRules, setIsLoadingRules] = useState(false);
   const [dirtyRules, setDirtyRules] = useState<number[]>([]);
@@ -115,7 +114,6 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields, im
           <Loader active />
         ) : (
           <RulesTable
-            accounts={accounts}
             errors={errors}
             ruleFields={realTransactionFields}
             rules={rules}

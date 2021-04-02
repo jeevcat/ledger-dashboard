@@ -10,14 +10,12 @@ interface Props {
   importRow: ImportRow;
   realTransactionFields: RealTransactionField[];
   importAccount: string;
-  accounts: string[];
   onTransactionWrite: () => void;
 }
 
 const TransactionTableRow: React.FC<Props> = ({
   importRow,
   realTransactionFields,
-  accounts,
   importAccount,
   onTransactionWrite,
 }) => {
@@ -64,7 +62,6 @@ const TransactionTableRow: React.FC<Props> = ({
           <RecordTransactionModal
             realTransaction={importRow.real_transaction}
             importAccount={importAccount}
-            accounts={accounts}
             onWrite={onTransactionWrite}
           />
         )}
