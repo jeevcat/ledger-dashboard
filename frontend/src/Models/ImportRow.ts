@@ -1,4 +1,4 @@
-import { Transaction } from "./Transaction";
+import { RecordedTransaction } from "./RecordedTransaction";
 import { Rule } from "./Rule";
 
 export interface RealTransaction {
@@ -6,10 +6,10 @@ export interface RealTransaction {
 }
 
 export type RealTransactionField = keyof RealTransaction;
-export type TransactionField = keyof Transaction;
+export type TransactionField = keyof RecordedTransaction;
 
 export interface ImportRow {
   real_transaction?: RealTransaction;
-  recorded_transaction?: Transaction;
+  recorded_transaction?: RecordedTransaction;
   rule?: Rule;
 }

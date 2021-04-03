@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Grid, Header, Input, Loader, Modal } from "semantic-ui-react";
 import { RealTransaction } from "../Models/ImportRow";
-import { Transaction } from "../Models/Transaction";
+import { RecordedTransaction } from "../Models/RecordedTransaction";
 import { generateSingleTransaction } from "../Utils/BackendRequester";
 import LedgerAccountsDropdown from "./LedgerAccountsDropdown";
 import GeneratedTransaction from "./Transactions/GeneratedTransaction";
@@ -22,7 +22,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
   descriptionTemplate,
   onDescriptionTemplateChange,
 }) => {
-  const [generatedTransaction, setGeneratedTransaction] = useState<Transaction | undefined>(undefined);
+  const [generatedTransaction, setGeneratedTransaction] = useState<RecordedTransaction | undefined>(undefined);
 
   useEffect(() => {
     setGeneratedTransaction(undefined);
@@ -35,7 +35,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
       .catch((reason: any) => {
         console.warn("Couldn't generate: " + reason);
       })
-      .then((response: Transaction) => {
+      .then((response: RecordedTransaction) => {
         setGeneratedTransaction(response);
       });
   }, [account, descriptionTemplate, realTransaction]);

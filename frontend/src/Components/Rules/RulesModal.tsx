@@ -22,7 +22,9 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
   const [rules, setRules] = useState<Rule[]>([]);
   const [errors, setErrors] = useState<RuleErrors>({});
 
-  const { importAccount } = useContext(AccountsContext);
+  const {
+    importAccount: { path },
+  } = useContext(AccountsContext);
 
   // Don't fully get this syntax yet: https://github.com/microsoft/TypeScript/issues/24197#issuecomment-389928513
   const handleRuleEdit = <K extends keyof Rule>(id: number, field: K, value: any) => {
@@ -77,7 +79,7 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
       priority: 100,
       ruleName: "NEW RULE",
       matchFieldName: "description",
-      importAccount: importAccount.path,
+      importAccount: path,
       targetAccount: "",
       descriptionTemplate: "{{description}}",
       matchFieldRegex: "$^",
@@ -87,11 +89,11 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
 
   const fetchRules = useCallback(() => {
     setIsLoadingRules(true);
-    getRules(importAccount.path).then((data: Rule[]) => {
+    getRules(path).then((data: Rule[]) => {
       setRules(data);
       setIsLoadingRules(false);
     });
-  }, [importAccount]);
+  }, [path]);
 
   const updateRules = () => {
     fetchRules();

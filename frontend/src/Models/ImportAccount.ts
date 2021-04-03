@@ -1,8 +1,10 @@
 import { RealTransactionField } from "./ImportRow";
 
+export type ImportAccountType = "ing" | "n26" | "ib";
+
 export interface ImportAccount {
   humanName: string;
-  path: string;
+  path: ImportAccountType;
   icon: string;
   defaultColumns: RealTransactionField[];
 }
