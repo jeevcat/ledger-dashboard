@@ -10,7 +10,8 @@ pub async fn get_existing_transactions(
     n26: web::Data<Arc<N26>>,
     hledger: web::Data<Arc<Hledger>>,
 ) -> HttpResponse {
-    transactions_utils::get_existing_transactions(&**n26.into_inner(), &hledger).await
+    let import_account: &N26 = &n26;
+    transactions_utils::get_existing_transactions(import_account, &hledger).await
 }
 
 // Get transactions which were able to be generated from rules
@@ -19,7 +20,8 @@ pub async fn get_generated_transactions(
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
 ) -> HttpResponse {
-    transactions_utils::get_generated_transactions(&**n26.into_inner(), &hledger, &db).await
+    let import_account: &N26 = &n26;
+    transactions_utils::get_generated_transactions(import_account, &hledger, &db).await
 }
 
 pub async fn write_generated_transactions(
@@ -27,7 +29,8 @@ pub async fn write_generated_transactions(
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
 ) -> HttpResponse {
-    transactions_utils::write_generated_transactions(&**n26.into_inner(), &hledger, &db).await
+    let import_account: &N26 = &n26;
+    transactions_utils::write_generated_transactions(import_account, &hledger, &db).await
 }
 
 // Get remaining real transactions which no rules matched
@@ -36,5 +39,6 @@ pub async fn get_unmatched_transactions(
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
 ) -> HttpResponse {
-    transactions_utils::get_unmatched_transactions(&**n26.into_inner(), &hledger, &db).await
+    let import_account: &N26 = &n26;
+    transactions_utils::get_unmatched_transactions(import_account, &hledger, &db).await
 }

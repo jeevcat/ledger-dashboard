@@ -3,6 +3,7 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering::Relaxed},
         Mutex,
@@ -12,6 +13,7 @@ use std::{
 
 use chrono::Datelike;
 use log::{error, info, warn};
+use rust_decimal::Decimal;
 
 use crate::{
     api::transactions::TransactionCollection,
@@ -279,6 +281,23 @@ impl Hledger {
         true
     }
 
+    pub async fn get_account_balance(&self, account: &str) -> Option<Decimal> {
+        let stdout = Command::new("hledger")
+            .arg("bal")
+            .arg("-V")
+            .arg("--output-format")
+            .arg("csv")
+            .arg("-f")
+            .arg(get_imported_ledger_file())
+            .arg(account)
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Couldn't start hledger command")
+            .stdout
+            .unwrap();
+        get_total_from_csv(stdout)
+    }
+
     // Cache
 
     fn is_cache_valid(&self) -> bool {
@@ -299,5 +318,76 @@ impl Hledger {
 
     fn invalidate_cache(&self) {
         self.cache_valid.store(false, Relaxed)
+    }
+}
+
+fn get_total_from_csv(reader: impl std::io::Read) -> Option<Decimal> {
+    let mut reader = csv::Reader::from_reader(reader);
+    for result in reader.records() {
+        if let Ok(record) = result {
+            if let Some(account) = record.get(0) {
+                if account != "total" {
+                    continue;
+                }
+                if let Some(total) = record.get(1) {
+                    return currency_amount_to_decimal(total);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn currency_amount_to_decimal(amount: &str) -> Option<Decimal> {
+    if let Some(amount) = amount.split_ascii_whitespace().next() {
+        let amount = amount.replace(",", "");
+        return Decimal::from_str(&amount).ok();
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal::{prelude::FromPrimitive, Decimal};
+
+    use super::{currency_amount_to_decimal, get_total_from_csv};
+
+    #[test]
+    fn currency_convert_simple() {
+        assert_eq!(
+            currency_amount_to_decimal("100 EUR").unwrap(),
+            Decimal::from_f32(100.).unwrap()
+        )
+    }
+
+    #[test]
+    fn currency_convert_cents() {
+        assert_eq!(
+            currency_amount_to_decimal("123.05 EUR").unwrap(),
+            Decimal::from_f32(123.05).unwrap()
+        )
+    }
+
+    #[test]
+    fn currency_convert_comma() {
+        assert_eq!(
+            currency_amount_to_decimal("-5,230.99 EUR").unwrap(),
+            Decimal::from_f32(-5230.99).unwrap()
+        )
+    }
+
+    #[test]
+    fn total_from_csv() {
+        let data = r#"
+"account","balance"
+"Assets:Cash:N26","-5,390.81 EUR"
+"Assets:Cash:N26:Savings","900.00 EUR"
+"Assets:Cash:N26-Savings","1,000.00 EUR"
+"total","-3,490.81 EUR"
+"#;
+        assert_eq!(
+            get_total_from_csv(data.as_bytes()),
+            Decimal::from_f32(-3490.81)
+        )
     }
 }

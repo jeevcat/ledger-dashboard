@@ -66,14 +66,12 @@ pub struct TimeSeriesHelper {
 
 pub struct AlphaVantage {
     http_client: reqwest::Client,
-    apikey: String,
 }
 
 impl AlphaVantage {
     pub fn new() -> Self {
         Self {
             http_client: reqwest::Client::new(),
-            apikey: config::alpha_vantage_key().expect("Need to set ALPHA_VANTAGE_KEY"),
         }
     }
 
@@ -192,7 +190,13 @@ impl AlphaVantage {
         let response = self
             .http_client
             .get(BASE_URL)
-            .query(&[("function", function), ("apikey", &self.apikey)])
+            .query(&[
+                ("function", function),
+                (
+                    "apikey",
+                    &config::alpha_vantage_key().expect("Need to set ALPHA_VANTAGE_KEY"),
+                ),
+            ])
             .query(query)
             .send()
             .await?;
