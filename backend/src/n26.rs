@@ -6,6 +6,7 @@ use std::{
     thread,
 };
 
+use async_trait::async_trait;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use log::info;
 use serde_json::{json, value::Value};
@@ -13,11 +14,13 @@ use serde_json::{json, value::Value};
 use crate::{
     config,
     db::Database,
+    import_account::ImportAccount,
     model::{
         n26transaction::N26Transaction, real_transaction::RealTransaction, token_data::TokenData,
     },
 };
 
+const N26_ACCOUNTS: &[&str; 1] = &["Assets:Cash:N26"];
 const BASE_URL_GLOBAL: &str = "https://api.tech26.global";
 const BASE_URL_DE: &str = "https://api.tech26.de";
 const BASIC_AUTH_USERNAME: &str = "nativeweb";
@@ -72,23 +75,6 @@ impl N26 {
         return false;
     }
 
-    // Get all transactions mapped by id
-    pub async fn get_transactions(&self) -> Vec<impl RealTransaction> {
-        if self.is_cache_valid() {
-            info!("N26 using cache!");
-            return self.get_cached_transactions();
-        }
-
-        let from = NaiveDate::from_ymd(2019, 1, 1).and_hms(0, 0, 0);
-        let all: Vec<N26Transaction> = self
-            .get_transactions_request(Some(from), None, Some(std::i32::MAX as u32), None)
-            .await;
-
-        self.cache_transactions(&all);
-
-        self.get_cached_transactions()
-    }
-
     // Cache
 
     pub fn _invalidate_cache(&self) {
@@ -99,7 +85,7 @@ impl N26 {
         self.cache_valid.load(Ordering::SeqCst)
     }
 
-    fn get_cached_transactions(&self) -> Vec<impl RealTransaction> {
+    fn get_cached_transactions(&self) -> Vec<N26Transaction> {
         self.cache.read().unwrap().clone()
     }
 
@@ -229,6 +215,31 @@ impl N26 {
         self.get_authentication()
             .expect("Failed to get token!")
             .access_token
+    }
+}
+
+#[async_trait]
+impl ImportAccount for N26 {
+    type RealTransactionType = N26Transaction;
+
+    async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
+        if self.is_cache_valid() {
+            info!("N26 using cache!");
+            return self.get_cached_transactions();
+        }
+
+        let from = NaiveDate::from_ymd(2019, 1, 1).and_hms(0, 0, 0);
+        let all: Vec<N26Transaction> = self
+            .get_transactions_request(Some(from), None, Some(std::i32::MAX as u32), None)
+            .await;
+
+        self.cache_transactions(&all);
+
+        self.get_cached_transactions()
+    }
+
+    fn get_hledger_accounts(&self) -> &[&str] {
+        N26_ACCOUNTS
     }
 }
 

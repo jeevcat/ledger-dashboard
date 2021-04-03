@@ -1,9 +1,11 @@
+use async_trait::async_trait;
 use serde::Deserialize;
 
 use crate::{
-    config,
-    model::{real_transaction::RealTransaction, saltedge_transaction::SaltEdgeTransaction},
+    config, import_account::ImportAccount, model::saltedge_transaction::SaltEdgeTransaction,
 };
+
+const ING_ACCOUNTS: &[&str; 1] = &["Assets:Cash:ING"];
 
 #[derive(Deserialize)]
 struct SaltEdgeResponse<T> {
@@ -20,8 +22,13 @@ impl SaltEdge {
             http_client: reqwest::Client::new(),
         }
     }
+}
 
-    pub async fn get_transactions(&self) -> Vec<impl RealTransaction> {
+#[async_trait]
+impl ImportAccount for SaltEdge {
+    type RealTransactionType = SaltEdgeTransaction;
+
+    async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
         let request_url = "https://www.saltedge.com/api/v5/transactions";
 
         let app_id = config::saltedge_app_id().expect("Salt Edge app id not set");
@@ -46,5 +53,9 @@ impl SaltEdge {
             .unwrap()
             .data;
         response
+    }
+
+    fn get_hledger_accounts(&self) -> &[&str] {
+        ING_ACCOUNTS
     }
 }

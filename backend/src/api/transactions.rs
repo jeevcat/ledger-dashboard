@@ -11,6 +11,7 @@ use super::{transactions_ib, transactions_ing};
 use crate::{
     api::transactions_n26,
     hledger::Hledger,
+    import_account::ImportAccount,
     model::{
         real_transaction::RealTransaction, recorded_transaction::RecordedTransaction,
         transaction_request::TransactionRequest,

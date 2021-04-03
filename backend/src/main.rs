@@ -6,6 +6,7 @@ mod file_utils;
 mod hledger;
 mod http;
 mod ib;
+mod import_account;
 mod model;
 mod n26;
 mod prices;
