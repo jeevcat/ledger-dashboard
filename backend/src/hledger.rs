@@ -16,10 +16,11 @@ use log::{error, info, warn};
 use rust_decimal::Decimal;
 
 use crate::{
-    api::transactions::TransactionCollection,
     file_utils::{get_imported_ledger_file, get_ledger_year_files},
     model::recorded_transaction::RecordedTransaction,
 };
+
+type TransactionCollection = Vec<RecordedTransaction>;
 
 const CONTENT_TYPE: &str = "Content-Type";
 const CONTENT_TYPE_JSON: &str = "application/json";

@@ -31,7 +31,7 @@ pub async fn run_server() -> io::Result<()> {
             .data(prices.clone())
             .service(api::rules::rules_routes())
             .service(api::rules::rule_routes())
-            .service(api::transactions::transactions_routes())
+            .service(api::transactions::routes::transactions_routes())
             .service(api::accounts::accounts_routes())
             .service(api::balance::balance_routes())
             .service(api::prices::prices_routes())
