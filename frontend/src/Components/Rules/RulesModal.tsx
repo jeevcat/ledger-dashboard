@@ -22,9 +22,7 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
   const [rules, setRules] = useState<Rule[]>([]);
   const [errors, setErrors] = useState<RuleErrors>({});
 
-  const {
-    importAccount: { path },
-  } = useContext(AccountsContext);
+  const { importAccount } = useContext(AccountsContext);
 
   // Don't fully get this syntax yet: https://github.com/microsoft/TypeScript/issues/24197#issuecomment-389928513
   const handleRuleEdit = <K extends keyof Rule>(id: number, field: K, value: any) => {
@@ -46,12 +44,12 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
     });
   };
 
-  const handleRuleSave = () => {
+  const handleRuleSave = async (): Promise<boolean> => {
     const newErrors: RuleErrors = {};
-    Promise.all(
+    return await Promise.all(
       dirtyRules.map((id) => {
         const rule = rules.find((r) => r.id === id)!;
-        return setRule(rule).then((error) => {
+        return setRule(importAccount, rule).then((error) => {
           if (error) {
             newErrors[id] = error;
           }
@@ -61,8 +59,11 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
       setDirtyRules([]);
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
+        return true;
       } else {
+        setErrors({});
         updateRules();
+        return false;
       }
     });
   };
@@ -79,21 +80,20 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
       priority: 100,
       ruleName: "NEW RULE",
       matchFieldName: "description",
-      importAccount: path,
-      targetAccount: "",
+      targetAccount: "?",
       descriptionTemplate: "{{description}}",
       matchFieldRegex: "$^",
     };
-    setRule(rule).then(updateRules);
+    setRule(importAccount, rule).then(updateRules);
   };
 
   const fetchRules = useCallback(() => {
     setIsLoadingRules(true);
-    getRules(path).then((data: Rule[]) => {
+    getRules(importAccount).then((data: Rule[]) => {
       setRules(data);
       setIsLoadingRules(false);
     });
-  }, [path]);
+  }, [importAccount]);
 
   const updateRules = () => {
     fetchRules();
@@ -135,8 +135,7 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
           color="green"
           disabled={dirtyRules.length === 0}
           onClick={() => {
-            handleRuleSave();
-            setRulesOpen(false);
+            handleRuleSave().then(setRulesOpen);
           }}
         >
           <Icon name="save" /> Save

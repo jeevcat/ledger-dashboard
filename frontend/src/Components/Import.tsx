@@ -103,7 +103,7 @@ export const Import: React.FC = () => {
   const accountPath = matchPath<{ accountName: string }>(url, {
     path: path,
   })?.params.accountName!;
-  const account = ImportAccounts.find((k) => k.path === accountPath);
+  const account = ImportAccounts.find((k) => k.id === accountPath);
   if (account === undefined) {
     return (
       <Header textAlign="center" as="h1" style={{ marginTop: "1em" }}>

@@ -21,7 +21,7 @@ const App: React.FC = () => {
                 Account overview
               </Menu.Item>
               {ImportAccounts.map((x) => (
-                <Menu.Item key={x.path} as={NavLink} to={`/import/${x.path}`}>
+                <Menu.Item key={x.id} as={NavLink} to={`/import/${x.id}`}>
                   <Image src={x.icon} inline rounded centered floated="right" style={{ width: "16px" }} />
                   {x.humanName}
                 </Menu.Item>

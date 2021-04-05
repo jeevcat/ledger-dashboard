@@ -9,27 +9,27 @@ import { TransactionRequest } from "../Models/TransactionRequest";
 const host = !process.env.NODE_ENV || process.env.NODE_ENV === "development" ? "" : "http://tank:8080";
 
 export const getExistingTransactions = (account: ImportAccount): Promise<ImportRow[]> =>
-  get(`transactions/existing/${account.path}`);
+  get(`transactions/existing/${account.id}`);
 
 export const getGeneratedTransactions = (account: ImportAccount): Promise<ImportRow[]> =>
-  get(`transactions/generated/${account.path}`);
+  get(`transactions/generated/${account.id}`);
 
 export const getUnmatchedTransactions = (account: ImportAccount): Promise<ImportRow[]> =>
-  get(`transactions/unmatched/${account.path}`);
+  get(`transactions/unmatched/${account.id}`);
 
-export const writeGeneratedTransactions = (account: ImportAccount) => post(`transactions/write/${account.path}`);
+export const writeGeneratedTransactions = (account: ImportAccount) => post(`transactions/write/${account.id}`);
 
 export const generateSingleTransaction = (request: TransactionRequest) => post("transactions/new", request);
 
-export const getRules = (importAccount: string): Promise<Rule[]> => get("rules", { import_account: importAccount });
+export const getRules = (account: ImportAccount): Promise<Rule[]> => get(`rules/${account.id}`);
 
-export const setRule = (rule: Rule): Promise<any> => post("rules", rule);
+export const setRule = (account: ImportAccount, rule: Rule): Promise<any> => post(`rules/${account.id}`, rule);
 
 export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
 
-export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.path}`);
+export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.id}`);
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;
@@ -52,9 +52,6 @@ const post = <T>(url: string, data?: T): Promise<any> => {
     },
     body: JSON.stringify(data),
   }).then((response) => {
-    if (!response.ok) {
-      throw new Error(response.statusText);
-    }
     return response.json().catch(() => {});
   });
 };

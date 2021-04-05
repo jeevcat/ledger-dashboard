@@ -14,7 +14,7 @@ interface Props {
 
 const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
   const {
-    importAccount: { path },
+    importAccount: { id: path },
   } = useContext(AccountsContext);
 
   const accountSections = getTargetAccount(transaction, path)

@@ -39,7 +39,10 @@ pub fn get_database_file(filename: &str) -> Option<PathBuf> {
 fn get_backend_path() -> Option<PathBuf> {
     // Support for running inside cargo directory structure
     if let Some(cargo_project_root) = option_env!("CARGO_MANIFEST_DIR") {
-        info!("We in running inside cargo: {}", cargo_project_root);
+        info!(
+            "We are running inside cargo with root: {}",
+            cargo_project_root
+        );
         return Some(PathBuf::from(cargo_project_root));
     }
     // Default to exe directory
