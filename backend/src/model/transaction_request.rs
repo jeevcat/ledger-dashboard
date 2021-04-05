@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    n26transaction::N26Transaction, real_transaction::RealTransaction,
+    n26_transaction::N26Transaction, real_transaction::RealTransaction,
     saltedge_transaction::SaltEdgeTransaction,
 };
 

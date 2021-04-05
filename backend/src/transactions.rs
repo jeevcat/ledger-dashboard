@@ -75,7 +75,7 @@ mod tests {
 
     use super::get_generated_transactions;
     use crate::model::{
-        n26transaction::N26Transaction, real_transaction::RealTransaction,
+        n26_transaction::N26Transaction, real_transaction::RealTransaction,
         recorded_transaction::RecordedTransaction, rule::Rule,
     };
 

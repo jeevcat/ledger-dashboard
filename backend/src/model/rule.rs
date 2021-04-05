@@ -71,7 +71,7 @@ mod tests {
     use regex::Regex;
 
     use super::*;
-    use crate::model::{n26transaction::N26Transaction, rule::Rule};
+    use crate::model::{n26_transaction::N26Transaction, rule::Rule};
 
     lazy_static! {
         static ref TRANSACTION: N26Transaction = serde_json::from_str(

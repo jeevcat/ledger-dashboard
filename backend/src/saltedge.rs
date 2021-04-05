@@ -1,8 +1,10 @@
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{
-    config, import_account::ImportAccount, model::saltedge_transaction::SaltEdgeTransaction,
+    config,
+    import_account::ImportAccount,
+    model::{saltedge_account::SaltEdgeAccount, saltedge_transaction::SaltEdgeTransaction},
 };
 
 const ING_ACCOUNT: &str = "Assets:Cash:ING";
@@ -22,6 +24,31 @@ impl SaltEdge {
             http_client: reqwest::Client::new(),
         }
     }
+
+    async fn request<T>(&self, url: &str) -> T
+    where
+        T: DeserializeOwned,
+    {
+        let app_id = config::saltedge_app_id().expect("Salt Edge app id not set");
+        let secret = config::saltedge_secret().expect("Salt Edge secret not set");
+        let connection_id =
+            config::saltedge_connection_id().expect("Salt Edge connection id not set");
+
+        let response = self
+            .http_client
+            .get(url)
+            .header("App-id", app_id)
+            .header("Secret", secret)
+            .query(&[
+                ("connection_id", connection_id),
+                ("account_id", account_id()),
+            ])
+            .send()
+            .await
+            .unwrap();
+
+        response.json::<SaltEdgeResponse<T>>().await.unwrap().data
+    }
 }
 
 #[async_trait]
@@ -29,37 +56,25 @@ impl ImportAccount for SaltEdge {
     type RealTransactionType = SaltEdgeTransaction;
 
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
-        let request_url = "https://www.saltedge.com/api/v5/transactions";
-
-        let app_id = config::saltedge_app_id().expect("Salt Edge app id not set");
-        let secret = config::saltedge_secret().expect("Salt Edge secret not set");
-        let connection_id =
-            config::saltedge_connection_id().expect("Salt Edge connection id not set");
-        let account_id = config::saltedge_account_id().expect("Salt Edge account id not set");
-
-        let response = self
-            .http_client
-            .get(request_url)
-            .header("App-id", app_id)
-            .header("Secret", secret)
-            .query(&[("connection_id", connection_id), ("account_id", account_id)])
-            .send()
-            .await
-            .unwrap();
-
-        let response = response
-            .json::<SaltEdgeResponse<Vec<SaltEdgeTransaction>>>()
-            .await
-            .unwrap()
-            .data;
-        response
+        let url = "https://www.saltedge.com/api/v5/transactions";
+        self.request::<Vec<SaltEdgeTransaction>>(url).await
     }
 
     async fn get_balance(&self) -> rust_decimal::Decimal {
-        todo!()
+        let url = "https://www.saltedge.com/api/v5/accounts";
+        let accounts = self.request::<Vec<SaltEdgeAccount>>(url).await;
+        accounts
+            .iter()
+            .find(|a| a.id == account_id())
+            .unwrap()
+            .balance
     }
 
     fn get_hledger_account(&self) -> &str {
         ING_ACCOUNT
     }
+}
+
+fn account_id() -> String {
+    config::saltedge_account_id().expect("Salt Edge account id not set")
 }
