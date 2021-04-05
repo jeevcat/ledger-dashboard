@@ -1,9 +1,9 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::real_transaction::RealTransaction;
 
@@ -16,7 +16,7 @@ pub struct N26Transaction {
     #[serde(rename = "visibleTS")]
     visible_ts: i64,
     #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    extra: Map<String, Value>,
 }
 
 impl RealTransaction for N26Transaction {

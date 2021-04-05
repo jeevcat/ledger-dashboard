@@ -1,5 +1,6 @@
 pub mod balance_response;
 pub mod ib_report;
+pub mod n26_account;
 pub mod n26transaction;
 pub mod real_transaction;
 pub mod recorded_transaction;

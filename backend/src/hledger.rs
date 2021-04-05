@@ -290,7 +290,7 @@ impl Hledger {
             .arg("csv")
             .arg("-f")
             .arg(get_imported_ledger_file())
-            .arg(account)
+            .arg(format!("^{}$", account)) // Ensure we only get exact account matches
             .stdout(Stdio::piped())
             .spawn()
             .expect("Couldn't start hledger command")
@@ -381,9 +381,7 @@ mod tests {
     fn total_from_csv() {
         let data = r#"
 "account","balance"
-"Assets:Cash:N26","-5,390.81 EUR"
-"Assets:Cash:N26:Savings","900.00 EUR"
-"Assets:Cash:N26-Savings","1,000.00 EUR"
+"Assets:Cash:N26","-3,490.81 EUR"
 "total","-3,490.81 EUR"
 "#;
         assert_eq!(

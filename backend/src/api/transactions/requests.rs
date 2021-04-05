@@ -34,7 +34,7 @@ where
 
     // Get recorded transactions
     let recorded_transactions: TransactionCollection = hledger
-        .get_transactions(import_account.get_hledger_accounts())
+        .get_transactions(&[import_account.get_hledger_account()])
         .await;
 
     let existing =
@@ -57,7 +57,7 @@ where
 
     // Get recorded transactions
     let recorded_transactions: TransactionCollection = hledger
-        .get_transactions(import_account.get_hledger_accounts())
+        .get_transactions(&[import_account.get_hledger_account()])
         .await;
 
     // Get rules
@@ -85,7 +85,7 @@ where
 
     // Get recorded transactions
     let hledger_transactions: TransactionCollection = hledger
-        .get_transactions(import_account.get_hledger_accounts())
+        .get_transactions(&[import_account.get_hledger_account()])
         .await;
 
     // Get rules
@@ -122,7 +122,7 @@ where
 
     // Get recorded transactions
     let hledger_transactions: TransactionCollection = hledger
-        .get_transactions(import_account.get_hledger_accounts())
+        .get_transactions(&[import_account.get_hledger_account()])
         .await;
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
     let recorded_ids: HashSet<&str> = hledger_transactions.iter().flat_map(|t| t.ids()).collect();
@@ -173,9 +173,9 @@ where
     T: ImportAccount,
 {
     // Get real transactions
-    let n26_transactions = n26.get_transactions().await;
+    let real_transactions = n26.get_transactions().await;
     let mut fields_map = HashMap::<String, BTreeMap<String, u32>>::new();
-    for t in n26_transactions.iter() {
+    for t in real_transactions.iter() {
         for (key, value) in t.to_json_value().as_object().unwrap().iter() {
             let counter = fields_map
                 .entry(key.clone())
@@ -204,5 +204,5 @@ where
 }
 
 fn get_rules(db: &Database, import_account: &impl ImportAccount) -> Vec<Rule> {
-    db.get_all_rules(Some(import_account.get_hledger_accounts()[0]))
+    db.get_all_rules(Some(import_account.get_hledger_account()))
 }

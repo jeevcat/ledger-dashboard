@@ -5,7 +5,7 @@ use crate::{
     config, import_account::ImportAccount, model::saltedge_transaction::SaltEdgeTransaction,
 };
 
-const ING_ACCOUNTS: &[&str; 1] = &["Assets:Cash:ING"];
+const ING_ACCOUNT: &str = "Assets:Cash:ING";
 
 #[derive(Deserialize)]
 struct SaltEdgeResponse<T> {
@@ -55,7 +55,11 @@ impl ImportAccount for SaltEdge {
         response
     }
 
-    fn get_hledger_accounts(&self) -> &[&str] {
-        ING_ACCOUNTS
+    async fn get_balance(&self) -> rust_decimal::Decimal {
+        todo!()
+    }
+
+    fn get_hledger_account(&self) -> &str {
+        ING_ACCOUNT
     }
 }

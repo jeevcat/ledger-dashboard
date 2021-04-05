@@ -9,6 +9,7 @@ use std::{
 use async_trait::async_trait;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use log::info;
+use rust_decimal::Decimal;
 use serde_json::{json, value::Value};
 
 use crate::{
@@ -16,11 +17,12 @@ use crate::{
     db::Database,
     import_account::ImportAccount,
     model::{
-        n26transaction::N26Transaction, real_transaction::RealTransaction, token_data::TokenData,
+        n26_account::N26Accounts, n26transaction::N26Transaction,
+        real_transaction::RealTransaction, token_data::TokenData,
     },
 };
 
-const N26_ACCOUNTS: &[&str; 1] = &["Assets:Cash:N26"];
+const N26_ACCOUNT: &str = "Assets:Cash:N26";
 const BASE_URL_GLOBAL: &str = "https://api.tech26.global";
 const BASE_URL_DE: &str = "https://api.tech26.de";
 const BASIC_AUTH_USERNAME: &str = "nativeweb";
@@ -146,7 +148,7 @@ impl N26 {
             .unwrap();
 
         let transactions = response.json::<Vec<N26Transaction>>().await.unwrap();
-        // For some reason the api doesn't response the "from" parameter
+        // For some reason the api doesn't resect the "from" parameter
         if let Some(from) = from_time {
             return transactions
                 .into_iter()
@@ -154,6 +156,22 @@ impl N26 {
                 .collect();
         }
         transactions
+    }
+
+    /// Retrieves the current balance
+    async fn get_accounts_request(&self) -> N26Accounts {
+        let token = self.get_token().await;
+
+        let request_url: String = format!("{}/api/accounts", BASE_URL_DE);
+        let response = self
+            .http_client
+            .get(&request_url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .unwrap();
+
+        response.json().await.unwrap()
     }
 
     /* Authenication flow:
@@ -238,8 +256,12 @@ impl ImportAccount for N26 {
         self.get_cached_transactions()
     }
 
-    fn get_hledger_accounts(&self) -> &[&str] {
-        N26_ACCOUNTS
+    async fn get_balance(&self) -> Decimal {
+        self.get_accounts_request().await.available_balance
+    }
+
+    fn get_hledger_account(&self) -> &str {
+        N26_ACCOUNT
     }
 }
 
