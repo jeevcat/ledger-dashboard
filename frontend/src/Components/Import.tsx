@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { matchPath, Redirect, Route, Switch, useHistory, useParams, useRouteMatch } from "react-router-dom";
-import { Button, Header, Icon, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
+import { Header, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
 import { ImportAccounts } from "../Models/ImportAccount";
 import { ImportRow, RealTransactionField } from "../Models/ImportRow";
 import { AccountsContextComponent } from "../Utils/AccountsContext";
-import {
-  getExistingTransactions,
-  getGeneratedTransactions,
-  getUnmatchedTransactions,
-  writeGeneratedTransactions,
-} from "../Utils/BackendRequester";
+import { getExistingTransactions, getGeneratedTransactions, getUnmatchedTransactions } from "../Utils/BackendRequester";
+import { RecordTransactionsButton } from "./RecordTransactionsButtons";
 import RulesModal from "./Rules/RulesModal";
 import { Tab, TransactionTabs } from "./Transactions/TransactionTabs";
 
@@ -132,18 +128,7 @@ export const Import: React.FC = () => {
           ))}
           <Menu.Item position="right">
             <RulesModal onRulesChanged={fetchTransactions} realTransactionFields={realTransactionFields} />
-            <Button
-              primary
-              basic
-              icon
-              labelPosition="right"
-              onClick={() => {
-                writeGeneratedTransactions(account).then(fetchTransactions);
-              }}
-            >
-              Record generated transactions
-              <Icon name="file" />
-            </Button>
+            <RecordTransactionsButton account={account} onGenerate={fetchTransactions} />
           </Menu.Item>
         </Menu>
 

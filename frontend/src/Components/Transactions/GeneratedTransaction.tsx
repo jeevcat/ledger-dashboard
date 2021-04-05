@@ -22,6 +22,9 @@ const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
     .map((v) => {
       return { key: v, content: v };
     });
+  console.log(path);
+  console.log(getTargetAccount(transaction, path));
+  console.log(accountSections);
 
   const amount = getAmount(transaction, path);
 
