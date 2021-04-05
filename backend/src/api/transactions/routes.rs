@@ -31,6 +31,10 @@ pub fn transactions_routes() -> impl HttpServiceFactory {
             web::post().to(requests::write_generated_transactions::<N26>),
         )
         .route(
+            "/check/n26",
+            web::get().to(requests::check::<N26>),
+        )
+        .route(
             "/existing/ing",
             web::get().to(requests::get_existing_transactions::<SaltEdge>),
         )
@@ -45,6 +49,10 @@ pub fn transactions_routes() -> impl HttpServiceFactory {
         .route(
             "/write/ing",
             web::post().to(requests::write_generated_transactions::<SaltEdge>),
+        )
+        .route(
+            "/check/ing",
+            web::get().to(requests::check::<SaltEdge>),
         )
         .route("/existing/ib", web::get().to(ib::get_existing_transactions))
         .route(

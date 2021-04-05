@@ -28,13 +28,18 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
   };
 
   const sortCompare = (a: ImportRow, b: ImportRow) => {
-    if (a.real_transaction === undefined || b.real_transaction === undefined) {
-      return 0;
-    }
     if (sortedColumn === "rule" && a.rule && b.rule) {
       const valA = a.rule.id;
       const valB = b.rule.id;
       return sortCompareBase(valA, valB);
+    }
+    if (sortedColumn === "errors") {
+      const valA = a.errors;
+      const valB = b.errors;
+      return sortCompareBase(valA, valB);
+    }
+    if (!a.real_transaction || !b.real_transaction) {
+      return 0;
     }
     const valA = a.real_transaction[sortedColumn];
     const valB = b.real_transaction[sortedColumn];
@@ -72,6 +77,15 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
               onClick={() => handleSort("rule")}
             >
               Rule
+            </Table.HeaderCell>
+          )}
+          {transactions[0].real_transaction && transactions[0].recorded_transaction && (
+            <Table.HeaderCell
+              textAlign="center"
+              sorted={sortedColumn === "errors" ? sortDirection : undefined}
+              onClick={() => handleSort("errors")}
+            >
+              Errors
             </Table.HeaderCell>
           )}
           {transactions[0].recorded_transaction && <Table.HeaderCell>Generated</Table.HeaderCell>}

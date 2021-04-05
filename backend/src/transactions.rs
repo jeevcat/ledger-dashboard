@@ -23,14 +23,15 @@ where
         .collect();
     recorded_transactions
         .into_iter()
-        .flat_map(|rec: &RecordedTransaction| {
-            rec.ids()
-                .filter_map(|id| real_transactions.get(id))
-                .map(move |real| TransactionResponse {
-                    real_transaction: real.to_json_value(),
-                    recorded_transaction: Some(rec.to_owned()),
-                    rule: None,
-                })
+        .map(|rec: &RecordedTransaction| {
+            let real = rec.ids().find_map(|id| real_transactions.get(id));
+            let real_json = real.map_or(serde_json::Value::Null, |real| real.to_json_value());
+            TransactionResponse {
+                real_transaction: real_json,
+                recorded_transaction: Some(rec.to_owned()),
+                rule: None,
+                errors: get_errors(&real, rec),
+            }
         })
         .collect()
 }
@@ -61,10 +62,22 @@ where
                     real_transaction: real.to_json_value(),
                     recorded_transaction: Some(gen),
                     rule: Some(rule.to_owned()),
+                    errors: vec![],
                 })
             })
         })
         .collect()
+}
+
+fn get_errors(real: &Option<&impl RealTransaction>, recorded: &RecordedTransaction) -> Vec<String> {
+    let mut errors = vec![];
+    if let Some(real) = real {
+        //if real.get_amount() != recorded.am
+    } else {
+        errors.push("Recorded transaction without corresponding Real".to_string());
+    }
+
+    errors
 }
 
 #[cfg(test)]

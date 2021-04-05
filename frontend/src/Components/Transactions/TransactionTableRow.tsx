@@ -14,30 +14,33 @@ interface Props {
 
 const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields, onTransactionWrite }) => {
   const formatField = (field: RealTransactionField) => {
-    const val = importRow.real_transaction![field];
+    const val = importRow.real_transaction ? importRow.real_transaction[field] : null;
+    if (!val) {
+      return <Label>None</Label>;
+    }
     const formatter = formatters[field];
     if (formatter !== undefined) {
       return formatter(val);
-    }
-    if (!val) {
-      return <Label>None</Label>;
     }
     return val;
   };
 
   const real_transaction_cell = (field: RealTransactionField) => {
-    switch (field) {
-      case "amount": {
-        const pos = importRow.real_transaction![field] > 0;
-        return (
-          <Table.Cell key={field} positive={pos} negative={!pos}>
-            {formatField(field)}
-          </Table.Cell>
-        );
+    if (importRow.real_transaction) {
+      switch (field) {
+        case "amount": {
+          const pos = importRow.real_transaction[field] > 0;
+          return (
+            <Table.Cell key={field} positive={pos} negative={!pos}>
+              {formatField(field)}
+            </Table.Cell>
+          );
+        }
+        default:
+          break;
       }
-      default:
-        return <Table.Cell key={field}>{formatField(field)}</Table.Cell>;
     }
+    return <Table.Cell key={field}>{formatField(field)}</Table.Cell>;
   };
   return (
     <Table.Row>
@@ -46,9 +49,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
           flowing
           size="mini"
           content={
-            importRow.real_transaction !== undefined && (
-              <TransactionSummary realTransaction={importRow.real_transaction} />
-            )
+            importRow.real_transaction !== null && <TransactionSummary realTransaction={importRow.real_transaction} />
           }
           trigger={<Button icon="info" />}
         />
@@ -60,6 +61,13 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
       {importRow.rule && (
         <Table.Cell textAlign="center">
           <Label color="blue">{importRow.rule.ruleName}</Label>
+        </Table.Cell>
+      )}
+      {importRow.errors && (
+        <Table.Cell textAlign="center">
+          {importRow.errors.map((e) => (
+            <li key={e}>{e}</li>
+          ))}
         </Table.Cell>
       )}
       {importRow.recorded_transaction && (

@@ -6,6 +6,7 @@ use std::{
 
 use actix_web::{web, HttpResponse};
 use log::info;
+use serde_json::json;
 
 use crate::{
     db::Database,
@@ -140,6 +141,7 @@ where
             real_transaction: real.to_json_value(),
             recorded_transaction: None,
             rule: None,
+            errors: vec![]
         })
         .collect();
 
@@ -201,6 +203,32 @@ where
         next_fields_map.insert(key, jsoned);
     }
     HttpResponse::Ok().json(next_fields_map)
+}
+
+pub async fn check<T>(
+    import_account: web::Data<Arc<T>>,
+    hledger: web::Data<Arc<Hledger>>,
+) -> HttpResponse
+where
+    T: ImportAccount,
+{
+    // Get recorded transactions
+    let recorded_transactions: TransactionCollection = hledger
+        .get_transactions(&[import_account.get_hledger_account()])
+        .await;
+
+    let mut recorded_ids: HashSet<&str> = HashSet::new();
+    let mut dupe_ids: HashSet<&str> = HashSet::new();
+    for t in recorded_transactions.iter() {
+        for id in t.ids() {
+            let was_first = recorded_ids.insert(id);
+            if !was_first {
+                dupe_ids.insert(id);
+            }
+        }
+    }
+
+    HttpResponse::Ok().json(json!({ "dupe_ids": dupe_ids }))
 }
 
 fn get_rules(db: &Database, import_account: &impl ImportAccount) -> Vec<Rule> {

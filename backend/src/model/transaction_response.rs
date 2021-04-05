@@ -11,4 +11,5 @@ pub struct TransactionResponse {
     pub recorded_transaction: Option<RecordedTransaction>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule: Option<Rule>,
+    pub errors: Vec<String>,
 }
