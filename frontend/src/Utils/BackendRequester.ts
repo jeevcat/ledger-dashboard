@@ -1,3 +1,4 @@
+import { Balance } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { ImportRow } from "../Models/ImportRow";
 import { Rule } from "../Models/Rule";
@@ -27,6 +28,8 @@ export const setRule = (rule: Rule): Promise<any> => post("rules", rule);
 export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
+
+export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.path}`);
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;

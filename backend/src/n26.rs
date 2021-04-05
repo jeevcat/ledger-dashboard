@@ -49,6 +49,7 @@ pub struct N26 {
     cache_valid: AtomicBool,
     http_client: reqwest::Client,
     db: Arc<Database>,
+    waiting_for_mfa: AtomicBool,
 }
 
 impl N26 {
@@ -57,6 +58,7 @@ impl N26 {
             cache: RwLock::new(Vec::new()),
             cache_valid: AtomicBool::new(false),
             http_client: reqwest::Client::new(),
+            waiting_for_mfa: AtomicBool::new(false),
             db,
         }
     }
@@ -184,6 +186,7 @@ impl N26 {
     async fn authenticate(&self) {
         if let Some(mut new_auth) = request_token(
             &self.http_client,
+            &self.waiting_for_mfa,
             config::n26_username()
                 .as_ref()
                 .expect("N26 username not set"),
@@ -228,6 +231,12 @@ impl N26 {
     async fn get_token(&self) -> String {
         let success = self.attempt_refresh_authentication().await;
         if !success {
+            // Stall until other auth flows are done
+            while self.waiting_for_mfa.load(Ordering::SeqCst) {
+                info!("Stalling N26 auth until a different MFA is accepted");
+                thread::sleep(Duration::seconds(5).to_std().unwrap());
+            }
+
             self.authenticate().await;
         }
         self.get_authentication()
@@ -287,6 +296,12 @@ async fn initiate_authentication_flow(
         .await
         .unwrap();
     if response.status() != 403 {
+        if response.status() == 429 {
+            panic!(
+                "Too many failed N26 logins: {:#?}",
+                response.json::<Value>().await.unwrap()
+            );
+        }
         panic!(
             "Unexpected response for initial auth request: {:#?}",
             response
@@ -305,17 +320,20 @@ async fn initiate_authentication_flow(
 /// Request an authentication token from the server.
 async fn request_token(
     http_client: &reqwest::Client,
+    waiting_for_2fa: &AtomicBool,
     username: &str,
     password: &str,
 ) -> Option<TokenData> {
     let mfa_token = initiate_authentication_flow(http_client, username, password).await;
     info!("Got MFA token {}", mfa_token);
     request_mfa_approval(http_client, &mfa_token).await;
+    waiting_for_2fa.store(true, Ordering::SeqCst);
     let mut new_auth: Option<TokenData> = None;
     while new_auth.is_none() {
         thread::sleep(Duration::seconds(5).to_std().unwrap());
         new_auth = complete_authentication_flow(http_client, &mfa_token).await;
     }
+    waiting_for_2fa.store(false, Ordering::SeqCst);
     new_auth
 }
 

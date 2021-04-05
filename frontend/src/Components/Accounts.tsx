@@ -9,12 +9,13 @@ export const AccountsComponent: React.FC = () => {
     <Grid textAlign="center" verticalAlign="middle" style={{ height: "100vh", margin: 0 }}>
       <Grid.Column style={{ maxWidth: 800 }}>
         <Header as="h1">Accounts</Header>
-        <Table>
+        <Table celled>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell>Account</Table.HeaderCell>
               <Table.HeaderCell>Real Balance</Table.HeaderCell>
               <Table.HeaderCell>Ledger Balance</Table.HeaderCell>
+              <Table.HeaderCell>In Sync</Table.HeaderCell>
               <Table.HeaderCell>Import</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
