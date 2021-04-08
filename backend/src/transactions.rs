@@ -1,19 +1,23 @@
 use std::collections::{HashMap, HashSet};
 
+use rust_decimal::Decimal;
+
 use crate::{
     model::{
-        real_transaction::RealTransaction, recorded_transaction::RecordedTransaction, rule::Rule,
-        transaction_response::TransactionResponse,
+        real_transaction::RealTransaction,
+        recorded_transaction::RecordedTransaction,
+        rule::Rule,
+        transaction_response::{ExistingTransactionResponse, TransactionResponse},
     },
     templater::Templater,
 };
 
-pub fn get_existing_transactions<'a, I, J, K>(
-    recorded_transactions: I,
+pub fn get_existing_transactions<J, K>(
+    import_hledger_account: &str,
+    recorded_transactions: &[RecordedTransaction],
     real_transactions: J,
-) -> Vec<TransactionResponse>
+) -> Vec<ExistingTransactionResponse>
 where
-    I: IntoIterator<Item = &'a RecordedTransaction>,
     J: IntoIterator<Item = K>,
     K: RealTransaction,
 {
@@ -21,16 +25,41 @@ where
         .into_iter()
         .map(move |t| (t.get_id().to_string(), t))
         .collect();
+
+    // Collect unique ids so we can check for duplicates
+    let mut distinct_recorded_ids = HashMap::<&str, u8>::new();
+    for t in recorded_transactions {
+        for id in t.get_ids() {
+            let counter = distinct_recorded_ids.entry(id).or_insert(0);
+            *counter += 1;
+        }
+    }
+
+    let mut recorded_transactions = recorded_transactions.to_vec();
+    recorded_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
     recorded_transactions
-        .into_iter()
-        .map(|rec: &RecordedTransaction| {
-            let real = rec.ids().find_map(|id| real_transactions.get(id));
+        .iter()
+        .scan(
+            (Decimal::new(0, 0), Decimal::new(0, 0)),
+            |(rec_sum, real_sum), rec| {
+                if let Some(amount) = rec.get_amount(import_hledger_account) {
+                    *rec_sum += amount;
+                }
+                let real = rec.get_ids().find_map(|id| real_transactions.get(id));
+                if let Some(real) = real {
+                    *real_sum += real.get_amount();
+                }
+                Some(((rec, real), (*rec_sum, *real_sum)))
+            },
+        )
+        .map(|((rec, real), (recorded_cumulative, real_cumulative))| {
             let real_json = real.map_or(serde_json::Value::Null, |real| real.to_json_value());
-            TransactionResponse {
+            ExistingTransactionResponse {
                 real_transaction: real_json,
-                recorded_transaction: Some(rec.to_owned()),
-                rule: None,
-                errors: get_errors(&real, rec),
+                recorded_transaction: rec.to_owned(),
+                real_cumulative,
+                recorded_cumulative,
+                errors: get_errors(import_hledger_account, &distinct_recorded_ids, &real, rec),
             }
         })
         .collect()
@@ -49,7 +78,10 @@ where
     let templater = Templater::from_rules(rules);
 
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
-    let recorded_ids: HashSet<&str> = recorded_transactions.iter().flat_map(|t| t.ids()).collect();
+    let recorded_ids: HashSet<&str> = recorded_transactions
+        .iter()
+        .flat_map(|t| t.get_ids())
+        .collect();
 
     real_transactions
         .into_iter()
@@ -62,17 +94,45 @@ where
                     real_transaction: real.to_json_value(),
                     recorded_transaction: Some(gen),
                     rule: Some(rule.to_owned()),
-                    errors: vec![],
                 })
             })
         })
         .collect()
 }
 
-fn get_errors(real: &Option<&impl RealTransaction>, recorded: &RecordedTransaction) -> Vec<String> {
-    let mut errors = vec![];
+fn get_errors(
+    import_hledger_account: &str,
+    distinct_recorded_ids: &HashMap<&str, u8>,
+    real: &Option<&impl RealTransaction>,
+    recorded: &RecordedTransaction,
+) -> Vec<String> {
+    let mut errors: Vec<String> = recorded
+        .get_ids()
+        .filter_map(|id| {
+            distinct_recorded_ids.get(id).map(|count| {
+                if count > &1 {
+                    Some(format!("Duplicate ID {}", id))
+                } else {
+                    None
+                }
+            })
+        })
+        .flatten()
+        .collect();
     if let Some(real) = real {
-        //if real.get_amount() != recorded.am
+        if let Some(amount) = recorded.get_amount(import_hledger_account) {
+            if amount != real.get_amount() {
+                errors.push("Amounts don't match".to_string());
+            }
+        }
+        let rec_date = recorded.get_date(Some(import_hledger_account));
+        if rec_date != real.get_date() {
+            errors.push(format!(
+                "Dates don't match. Rec: {}. Real: {}",
+                rec_date,
+                real.get_date()
+            ));
+        }
     } else {
         errors.push("Recorded transaction without corresponding Real".to_string());
     }
@@ -152,9 +212,10 @@ mod tests {
             REAL[2].get_id()
         );
         assert_eq!(t.tdescription, "Test Amazon with Buy item 3");
-        assert_eq!(t.tdate.year(), 2020);
-        assert_eq!(t.tdate.month(), 8);
-        assert_eq!(t.tdate.day(), 13);
+        let date = t.get_date(None);
+        assert_eq!(date.year(), 2020);
+        assert_eq!(date.month(), 8);
+        assert_eq!(date.day(), 13);
         assert_eq!(t.ttags[0][0], "uuid");
         assert_eq!(t.ttags[0][1], REAL[2].get_id());
         assert_eq!(t.tpostings[0].paccount, "Assets:Cash:N26");

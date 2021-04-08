@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
-import { Breadcrumb, Card, Label } from "semantic-ui-react";
-import { getAmount, getDate, getTargetAccount, RecordedTransaction } from "../../Models/RecordedTransaction";
+import { Breadcrumb, Card, Label, Popup } from "semantic-ui-react";
+import { getAmount, getDate, getId, getTargetAccount, RecordedTransaction } from "../../Models/RecordedTransaction";
 import { AccountsContext } from "../../Utils/AccountsContext";
 
 const formatter = new Intl.NumberFormat("en-US", {
@@ -22,25 +22,32 @@ const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
     .map((v) => {
       return { key: v, content: v };
     });
-  console.log(path);
-  console.log(getTargetAccount(transaction, path));
-  console.log(accountSections);
 
   const amount = getAmount(transaction, path);
 
   return (
-    <Card fluid>
-      <Card.Content>
-        <Card.Header>{transaction.tdescription}</Card.Header>
-        <Card.Meta>{getDate(transaction)}</Card.Meta>
-        <Card.Description>
-          <Breadcrumb icon="right angle" sections={accountSections} />
-        </Card.Description>
-        <Label attached="bottom right" size="large" color={amount > 0 ? "green" : "red"}>
-          {formatter.format(amount)}
-        </Label>
-      </Card.Content>
-    </Card>
+    <Popup
+      inverted
+      size="mini"
+      trigger={
+        <Card fluid>
+          <Card.Content>
+            <Card.Header>{transaction.tdescription}</Card.Header>
+            <Card.Meta>{getDate(transaction)}</Card.Meta>
+
+            <Card.Description>
+              <Breadcrumb icon="right angle" sections={accountSections} />
+            </Card.Description>
+            <Card.Description></Card.Description>
+            <Label attached="bottom right" size="large" color={amount > 0 ? "green" : "red"}>
+              {formatter.format(amount)}
+            </Label>
+          </Card.Content>
+        </Card>
+      }
+    >
+      <Popup.Content>{getId(transaction)} </Popup.Content>
+    </Popup>
   );
 };
 

@@ -11,8 +11,8 @@ struct Quantity {
     decimal_places: u32,
     decimal_mantissa: i64,
 }
-impl Quantity {
-    fn new(decimal: Decimal) -> Quantity {
+impl From<Decimal> for Quantity {
+    fn from(decimal: Decimal) -> Self {
         let floating_point = decimal.to_f64().unwrap_or_default();
         let decimal_places = decimal.scale();
         let decimal_mantissa = (10f64.powf(decimal_places as f64) * floating_point) as i64;
@@ -21,6 +21,18 @@ impl Quantity {
             decimal_places,
             decimal_mantissa,
         }
+    }
+}
+
+impl From<Quantity> for Decimal {
+    fn from(quantity: Quantity) -> Self {
+        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places)
+    }
+}
+
+impl From<&Quantity> for Decimal {
+    fn from(quantity: &Quantity) -> Self {
+        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places)
     }
 }
 
@@ -48,6 +60,7 @@ struct Amount {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Posting {
     pub paccount: String,
+    pdate: Option<NaiveDate>,
     pamount: Vec<Amount>,
     pstatus: String,
     pcomment: String,
@@ -59,9 +72,10 @@ impl Posting {
     pub fn new(account: &str, commodity: &str, amount: Decimal) -> Self {
         Self {
             paccount: account.to_string(),
+            pdate: None,
             pamount: vec![Amount {
                 acommodity: commodity.to_string(),
-                aquantity: Quantity::new(amount),
+                aquantity: amount.into(),
                 aismultiplier: false,
                 astyle: AmountStyle {
                     ascommodityside: String::from("R"),
@@ -78,6 +92,13 @@ impl Posting {
             ptags: vec![],
         }
     }
+
+    fn get_amount(&self) -> Option<Decimal> {
+        match self.pamount.len() {
+            1 => Some((&self.pamount[0].aquantity).into()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,9 +111,9 @@ enum SourcePos {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordedTransaction {
     pub tdescription: String,
-    pub tdate: NaiveDate,
     pub ttags: Vec<Vec<String>>,
     pub tpostings: Vec<Posting>,
+    tdate: NaiveDate,
     tcode: String,
     tcomment: String,
     tprecedingcomment: String,
@@ -147,11 +168,28 @@ impl RecordedTransaction {
         self
     }
 
-    pub fn ids(&self) -> impl Iterator<Item = &str> {
+    pub fn get_ids(&self) -> impl Iterator<Item = &str> {
         self.tpostings
             .iter()
             .filter_map(|p| get_uuid_from_tags(&p.ptags))
             .chain(get_uuid_from_tags(&self.ttags).into_iter())
+    }
+
+    pub fn get_amount(&self, account: &str) -> Option<Decimal> {
+        self.get_posting(account).map(|p| p.get_amount()).flatten()
+    }
+
+    pub fn get_date(&self, account: Option<&str>) -> NaiveDate {
+        if let Some(account) = account {
+            if let Some(date) = self.get_posting(account).map(|p| p.pdate).flatten() {
+                return date;
+            }
+        }
+        self.tdate
+    }
+
+    fn get_posting(&self, account: &str) -> Option<&Posting> {
+        self.tpostings.iter().find(|p| p.paccount == account)
     }
 }
 
@@ -159,4 +197,19 @@ fn get_uuid_from_tags(tags: &[Vec<String>]) -> Option<&str> {
     tags.iter()
         .find(|t| t[0] == "uuid")
         .map(|found| found[1].as_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal::{prelude::FromPrimitive, Decimal};
+
+    use super::Quantity;
+
+    #[test]
+    fn check_decimal_conversion() {
+        let decimal = Decimal::from_f32(1239.53).unwrap();
+        let quantity: Quantity = decimal.into();
+        let decimal2: Decimal = quantity.into();
+        assert_eq!(decimal, decimal2);
+    }
 }

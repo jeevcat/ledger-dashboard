@@ -1,13 +1,20 @@
 import React from "react";
 import { Button, Label, Popup, Table } from "semantic-ui-react";
-import { ImportRow, RealTransaction, RealTransactionField } from "../../Models/ImportRow";
+import {
+  ExistingTransactionResponse,
+  RealTransaction,
+  RealTransactionField,
+  TransactionResponse,
+} from "../../Models/ImportRow";
 import { asCurrency, asDate, asEuro } from "../../Utils/TextUtils";
 import RecordTransactionModal from "../RecordTransactionModal";
 import TransactionSummary from "../TransactionSummary";
 import GeneratedTransaction from "./GeneratedTransaction";
 
+type Response = TransactionResponse | ExistingTransactionResponse;
+
 interface Props {
-  importRow: ImportRow;
+  importRow: Response;
   realTransactionFields: RealTransactionField[];
   onTransactionWrite: () => void;
 }
@@ -58,16 +65,22 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
         )}
       </Table.Cell>
       {realTransactionFields.map(real_transaction_cell)}
-      {importRow.rule && (
+      {"rule" in importRow && importRow.rule && (
         <Table.Cell textAlign="center">
           <Label color="blue">{importRow.rule.ruleName}</Label>
         </Table.Cell>
       )}
-      {importRow.errors && (
+      {"real_cumulative" in importRow && <Table.Cell>{asEuro(importRow.real_cumulative)}</Table.Cell>}
+      {"recorded_cumulative" in importRow && <Table.Cell>{asEuro(importRow.recorded_cumulative)}</Table.Cell>}
+      {"errors" in importRow && importRow.errors && (
         <Table.Cell textAlign="center">
-          {importRow.errors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
+          {importRow.errors.length > 0 ? (
+            importRow.errors.map((e) => <li key={e}>{e}</li>)
+          ) : (
+            <Label basic color="green">
+              None
+            </Label>
+          )}
         </Table.Cell>
       )}
       {importRow.recorded_transaction && (

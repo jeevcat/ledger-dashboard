@@ -17,10 +17,11 @@ pub async fn get_existing_transactions(hledger: web::Data<Arc<Hledger>>) -> Http
     let ib_report = Ib::read_report();
 
     // Get recorded transactions
-    let hledger_transactions = hledger.get_transactions(IB_ACCOUNTS).await;
+    let hledger_transactions = hledger.fetch_transactions(IB_ACCOUNTS).await;
 
     let existing = transactions::get_existing_transactions(
-        hledger_transactions.iter(),
+        IB_ACCOUNTS[0],
+        &hledger_transactions,
         ib_report.get_transactions(),
     );
 
@@ -39,7 +40,6 @@ pub async fn get_unmatched_transactions() -> HttpResponse {
             real_transaction: real.to_json_value(),
             recorded_transaction: None,
             rule: None,
-            errors: vec![]
         })
         .collect();
 

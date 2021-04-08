@@ -20,8 +20,6 @@ use crate::{
     model::recorded_transaction::RecordedTransaction,
 };
 
-type TransactionCollection = Vec<RecordedTransaction>;
-
 const CONTENT_TYPE: &str = "Content-Type";
 const CONTENT_TYPE_JSON: &str = "application/json";
 const READ_PORT: i32 = 5001;
@@ -76,7 +74,7 @@ impl HledgerProcess {
             .collect()
     }
 
-    async fn get_transactions(&self, account_names: &[&str]) -> TransactionCollection {
+    async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<RecordedTransaction> {
         self.wait_for_hledger_process();
 
         // Fetch transactions from hledger-web API
@@ -187,8 +185,6 @@ impl HledgerProcess {
 }
 
 pub struct Hledger {
-    cache: Mutex<HashMap<String, TransactionCollection>>,
-    cache_valid: AtomicBool,
     http_client: reqwest::Client,
     read_process: HledgerProcess,
     write_processes: HashMap<i32, HledgerProcess>,
@@ -197,8 +193,6 @@ pub struct Hledger {
 impl Hledger {
     pub fn new() -> Self {
         Self {
-            cache: Mutex::new(HashMap::new()),
-            cache_valid: AtomicBool::new(false),
             http_client: reqwest::Client::new(),
             read_process: HledgerProcess::new(&get_imported_ledger_file(), READ_PORT),
             write_processes: get_ledger_year_files()
@@ -216,28 +210,20 @@ impl Hledger {
         self.read_process.get_commodities().await
     }
 
-    pub async fn get_transactions(&self, account_names: &[&str]) -> TransactionCollection {
-        // Early return cached transactions
-        let cache_key = account_names.join("-");
-        if self.is_cache_valid() {
-            info!("hledger using cache!");
-            return self.get_cached_transactions(&cache_key);
-        }
-
-        let transactions = self.read_process.get_transactions(account_names).await;
-
-        // Write to cache
-        self.cache_transactions(&cache_key, &transactions);
-
-        transactions
+    pub async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<RecordedTransaction> {
+        self.read_process
+            .fetch_transactions(account_names)
+            .await
+            // Ignore transactions without id
+            .into_iter()
+            .filter(|t| t.get_ids().next().is_some())
+            .collect()
     }
 
     // TODO: proper errors
     pub async fn write_single_transaction(&self, recorded: &RecordedTransaction) -> bool {
-        if let Some(process) = self.write_processes.get(&recorded.tdate.year()) {
+        if let Some(process) = self.write_processes.get(&recorded.get_date(None).year()) {
             process.wait_for_hledger_process();
-
-            self.invalidate_cache();
 
             if !process.write_transaction(&self.http_client, recorded).await {
                 return false;
@@ -252,9 +238,8 @@ impl Hledger {
 
     // TODO: proper errors
     pub async fn write_transactions(&self, recorded: &[RecordedTransaction]) -> bool {
-        self.invalidate_cache();
         for t in recorded {
-            let year = &t.tdate.year();
+            let year = &t.get_date(None).year();
             if let Some(process) = self.write_processes.get(year) {
                 process.wait_for_hledger_process();
                 if !process.write_transaction(&self.http_client, t).await {
@@ -297,28 +282,6 @@ impl Hledger {
             .stdout
             .unwrap();
         get_total_from_csv(stdout)
-    }
-
-    // Cache
-
-    fn is_cache_valid(&self) -> bool {
-        self.cache_valid.load(Relaxed)
-    }
-
-    fn get_cached_transactions(&self, cache_key: &str) -> TransactionCollection {
-        self.cache.lock().unwrap()[cache_key].clone()
-    }
-
-    fn cache_transactions(&self, cache_key: &str, transactions: &[RecordedTransaction]) {
-        self.cache_valid.store(true, Relaxed);
-        self.cache
-            .lock()
-            .unwrap()
-            .insert(cache_key.to_string(), transactions.into());
-    }
-
-    fn invalidate_cache(&self) {
-        self.cache_valid.store(false, Relaxed)
     }
 }
 

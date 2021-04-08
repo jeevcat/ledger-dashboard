@@ -99,9 +99,10 @@ mod tests {
         templater.register_rule(&RULE).unwrap();
         let t = RULE.apply(&templater, &*TRANSACTION).unwrap();
         assert_eq!(t.tdescription, "Test description for Amazon deals");
-        assert_eq!(t.tdate.year(), 2020);
-        assert_eq!(t.tdate.month(), 8);
-        assert_eq!(t.tdate.day(), 13);
+        let date = t.get_date(None);
+        assert_eq!(date.year(), 2020);
+        assert_eq!(date.month(), 8);
+        assert_eq!(date.day(), 13);
         assert_eq!(t.ttags[0][0], "uuid");
         assert_eq!(t.ttags[0][1], "1fc7d65c-de7c-415f-bf17-94de40c2e5d2");
         assert_eq!(t.tpostings[0].paccount, "Assets:Cash:N26");

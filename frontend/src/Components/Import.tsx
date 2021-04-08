@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { matchPath, Redirect, Route, Switch, useHistory, useParams, useRouteMatch } from "react-router-dom";
 import { Header, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
 import { ImportAccounts } from "../Models/ImportAccount";
-import { ImportRow, RealTransactionField } from "../Models/ImportRow";
+import { TransactionResponse, RealTransactionField } from "../Models/ImportRow";
 import { AccountsContextComponent } from "../Utils/AccountsContext";
 import { getExistingTransactions, getGeneratedTransactions, getUnmatchedTransactions } from "../Utils/BackendRequester";
 import { RecordTransactionsButton } from "./RecordTransactionsButtons";
@@ -48,7 +48,7 @@ export const Import: React.FC = () => {
 
   const [tabId, setTabId] = useState<TransactionTabType>(initialTabId ?? TransactionTabType.Recorded);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
-  const [transactions, setTransactions] = useState<ImportRow[]>([]);
+  const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [realTransactionFields, setRealTransactionFields] = useState<RealTransactionField[]>([]);
   const [filter, setFilter] = useState("");
 
@@ -62,7 +62,7 @@ export const Import: React.FC = () => {
     setTabId(data.id);
   };
 
-  const collectRealTransactionFields = (ts: ImportRow[]): RealTransactionField[] =>
+  const collectRealTransactionFields = (ts: TransactionResponse[]): RealTransactionField[] =>
     Array.from(new Set(ts.flatMap((t) => Object.keys(t.real_transaction ?? ""))) as Set<RealTransactionField>).sort();
 
   const fetchTransactions = () => {
@@ -71,8 +71,7 @@ export const Import: React.FC = () => {
       setAreTransactionsLoading(true);
       newTab
         .transactionSource(account)
-        .then((data: ImportRow[]) => {
-          console.log(data);
+        .then((data: TransactionResponse[]) => {
           setTransactions(data);
           setRealTransactionFields(collectRealTransactionFields(data));
         })
@@ -87,7 +86,7 @@ export const Import: React.FC = () => {
 
   const updateFilter = (newFilter: string) => setFilter(newFilter);
 
-  const getFilteredTransactions = (): ImportRow[] =>
+  const getFilteredTransactions = (): TransactionResponse[] =>
     transactions.filter((t) =>
       t.real_transaction
         ? Object.entries(t.real_transaction).some(([, value]) =>

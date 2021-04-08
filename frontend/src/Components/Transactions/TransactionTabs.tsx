@@ -13,7 +13,7 @@ import {
 } from "semantic-ui-react";
 import { SemanticICONS } from "semantic-ui-react/dist/commonjs/generic";
 import { ImportAccount } from "../../Models/ImportAccount";
-import { ImportRow, RealTransactionField } from "../../Models/ImportRow";
+import { RealTransactionField, TransactionResponse } from "../../Models/ImportRow";
 import { maxTransactionsPerPage } from "../../Utils/Config";
 import { toTitleCase } from "../../Utils/TextUtils";
 import { TransactionTable } from "./TransactionTable";
@@ -21,7 +21,7 @@ import { TransactionTable } from "./TransactionTable";
 export interface Tab {
   name: string;
   icon: SemanticICONS;
-  transactionSource: (account: ImportAccount) => Promise<ImportRow[]>;
+  transactionSource: (account: ImportAccount) => Promise<TransactionResponse[]>;
 }
 
 interface RouterProps {
@@ -30,7 +30,7 @@ interface RouterProps {
 }
 
 interface Props {
-  transactions: ImportRow[];
+  transactions: TransactionResponse[];
   defaultColumns: RealTransactionField[];
   possibleColumns: RealTransactionField[];
   onRuleSaved: () => void;
@@ -114,7 +114,7 @@ export const TransactionTabs: React.FC<Props> = ({
         <br />
         <Pagination
           activePage={pageNum}
-          totalPages={Math.trunc(transactions.length / maxTransactionsPerPage)}
+          totalPages={Math.trunc(transactions.length / maxTransactionsPerPage + 1)}
           onPageChange={onPageChange}
         />
       </Segment>

@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { Table } from "semantic-ui-react";
-import { ImportRow, RealTransaction } from "../../Models/ImportRow";
+import { ExistingTransactionResponse, RealTransaction, TransactionResponse } from "../../Models/ImportRow";
+import { getId } from "../../Models/RecordedTransaction";
 import { maxTransactionsPerPage } from "../../Utils/Config";
 import { toTitleCase } from "../../Utils/TextUtils";
 import TransactionTableRow from "./TransactionTableRow";
 
 type Columns = keyof RealTransaction;
 
+type Response = TransactionResponse | ExistingTransactionResponse;
 interface Props {
-  transactions: ImportRow[];
+  transactions: Response[];
   pageNum: number;
   selectedFields: Columns[];
   onTransactionWrite: () => void;
@@ -27,13 +29,13 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
     }
   };
 
-  const sortCompare = (a: ImportRow, b: ImportRow) => {
-    if (sortedColumn === "rule" && a.rule && b.rule) {
+  const sortCompare = (a: Response, b: Response) => {
+    if (sortedColumn === "rule" && "rule" in a && "rule" in b && a.rule && b.rule) {
       const valA = a.rule.id;
       const valB = b.rule.id;
       return sortCompareBase(valA, valB);
     }
-    if (sortedColumn === "errors") {
+    if (sortedColumn === "errors" && "errors" in a && "errors" in b && a.errors && b.errors) {
       const valA = a.errors;
       const valB = b.errors;
       return sortCompareBase(valA, valB);
@@ -56,6 +58,8 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
     return 0;
   };
 
+  const t = transactions[0];
+
   return (
     <Table compact celled sortable attached="bottom">
       <Table.Header>
@@ -70,7 +74,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
               {toTitleCase(field.toString())}
             </Table.HeaderCell>
           ))}
-          {transactions[0].rule && (
+          {"rule" in t && t.rule && (
             <Table.HeaderCell
               textAlign="center"
               sorted={sortedColumn === "rule" ? sortDirection : undefined}
@@ -79,7 +83,9 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
               Rule
             </Table.HeaderCell>
           )}
-          {transactions[0].real_transaction && transactions[0].recorded_transaction && (
+          {"real_cumulative" in t && <Table.HeaderCell>Cumulative</Table.HeaderCell>}
+          {"recorded_cumulative" in t && <Table.HeaderCell>Recorded Cumulative</Table.HeaderCell>}
+          {"errors" in t && (
             <Table.HeaderCell
               textAlign="center"
               sorted={sortedColumn === "errors" ? sortDirection : undefined}
@@ -88,7 +94,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
               Errors
             </Table.HeaderCell>
           )}
-          {transactions[0].recorded_transaction && <Table.HeaderCell>Generated</Table.HeaderCell>}
+          {t.recorded_transaction && <Table.HeaderCell>{"rule" in t ? "Generated" : "Recorded"}</Table.HeaderCell>}
         </Table.Row>
       </Table.Header>
       <Table.Body>
@@ -97,7 +103,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
           .slice((pageNum - 1) * maxTransactionsPerPage, pageNum * maxTransactionsPerPage)
           .map((r) => (
             <TransactionTableRow
-              key={r.real_transaction?.id}
+              key={r.real_transaction?.id ?? getId(r.recorded_transaction!)}
               realTransactionFields={selectedFields}
               importRow={r}
               onTransactionWrite={onTransactionWrite}
