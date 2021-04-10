@@ -4,8 +4,8 @@ use rust_decimal::Decimal;
 
 use crate::{
     model::{
+        hledger_transaction::HledgerTransaction,
         real_transaction::RealTransaction,
-        recorded_transaction::RecordedTransaction,
         rule::Rule,
         transaction_response::{ExistingTransactionResponse, TransactionResponse},
     },
@@ -14,7 +14,7 @@ use crate::{
 
 pub fn get_existing_transactions<J, K>(
     import_hledger_account: &str,
-    recorded_transactions: &[RecordedTransaction],
+    hledger_transactions: &[HledgerTransaction],
     real_transactions: J,
 ) -> Vec<ExistingTransactionResponse>
 where
@@ -28,16 +28,16 @@ where
 
     // Collect unique ids so we can check for duplicates
     let mut distinct_recorded_ids = HashMap::<&str, u8>::new();
-    for t in recorded_transactions {
+    for t in hledger_transactions {
         for id in t.get_ids() {
             let counter = distinct_recorded_ids.entry(id).or_insert(0);
             *counter += 1;
         }
     }
 
-    let mut recorded_transactions = recorded_transactions.to_vec();
-    recorded_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
-    recorded_transactions
+    let mut hledger_transactions = hledger_transactions.to_vec();
+    hledger_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
+    hledger_transactions
         .iter()
         .scan(
             (Decimal::new(0, 0), Decimal::new(0, 0)),
@@ -56,7 +56,7 @@ where
             let real_json = real.map_or(serde_json::Value::Null, |real| real.to_json_value());
             ExistingTransactionResponse {
                 real_transaction: real_json,
-                recorded_transaction: rec.to_owned(),
+                hledger_transaction: rec.to_owned(),
                 real_cumulative,
                 recorded_cumulative,
                 errors: get_errors(import_hledger_account, &distinct_recorded_ids, &real, rec),
@@ -66,7 +66,7 @@ where
 }
 
 pub fn get_generated_transactions<'a, ReaIter, Rea>(
-    recorded_transactions: &[RecordedTransaction],
+    hledger_transactions: &[HledgerTransaction],
     real_transactions: ReaIter,
     rules: &[Rule],
 ) -> Vec<TransactionResponse>
@@ -78,7 +78,7 @@ where
     let templater = Templater::from_rules(rules);
 
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
-    let recorded_ids: HashSet<&str> = recorded_transactions
+    let recorded_ids: HashSet<&str> = hledger_transactions
         .iter()
         .flat_map(|t| t.get_ids())
         .collect();
@@ -92,7 +92,7 @@ where
             rules.iter().find_map(|rule| {
                 rule.apply(&templater, real).map(|gen| TransactionResponse {
                     real_transaction: real.to_json_value(),
-                    recorded_transaction: Some(gen),
+                    hledger_transaction: Some(gen),
                     rule: Some(rule.to_owned()),
                 })
             })
@@ -104,7 +104,7 @@ fn get_errors(
     import_hledger_account: &str,
     distinct_recorded_ids: &HashMap<&str, u8>,
     real: &Option<&impl RealTransaction>,
-    recorded: &RecordedTransaction,
+    recorded: &HledgerTransaction,
 ) -> Vec<String> {
     let mut errors: Vec<String> = recorded
         .get_ids()
@@ -148,8 +148,8 @@ mod tests {
 
     use super::get_generated_transactions;
     use crate::model::{
-        n26_transaction::N26Transaction, real_transaction::RealTransaction,
-        recorded_transaction::RecordedTransaction, rule::Rule,
+        hledger_transaction::HledgerTransaction, n26_transaction::N26Transaction,
+        real_transaction::RealTransaction, rule::Rule,
     };
 
     lazy_static! {
@@ -189,12 +189,11 @@ mod tests {
         ]"#,
         )
         .unwrap();
-        static ref RECORDED: Vec<RecordedTransaction> =
-            vec![RecordedTransaction::new_with_postings(
-                &REAL[0],
-                "My Description",
-                "Expenses:Personal:Test"
-            )];
+        static ref RECORDED: Vec<HledgerTransaction> = vec![HledgerTransaction::new_with_postings(
+            &REAL[0],
+            "My Description",
+            "Expenses:Personal:Test"
+        )];
     }
 
     #[test]
@@ -203,7 +202,7 @@ mod tests {
         // 1st item is filtered as already recorded, 2nd item doesn't match rule
         assert_eq!(gen.len(), 1);
         let gen = &gen[0];
-        let t = gen.recorded_transaction.as_ref().unwrap();
+        let t = gen.hledger_transaction.as_ref().unwrap();
         assert_eq!(gen.rule.as_ref().unwrap().id, RULES[0].id);
         assert_eq!(
             gen.real_transaction.as_object().unwrap()["id"]

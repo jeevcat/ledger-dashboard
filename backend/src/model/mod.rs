@@ -1,9 +1,9 @@
 pub mod balance_response;
+pub mod hledger_transaction;
 pub mod ib_report;
 pub mod n26_accounts;
 pub mod n26_transaction;
 pub mod real_transaction;
-pub mod recorded_transaction;
 pub mod rule;
 pub mod saltedge_account;
 pub mod saltedge_transaction;

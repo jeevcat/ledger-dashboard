@@ -13,7 +13,7 @@ use crate::{
     hledger::Hledger,
     import_account::ImportAccount,
     model::{
-        real_transaction::RealTransaction, recorded_transaction::RecordedTransaction, rule::Rule,
+        hledger_transaction::HledgerTransaction, real_transaction::RealTransaction, rule::Rule,
         transaction_request::TransactionRequest, transaction_response::TransactionResponse,
     },
     templater::Templater,
@@ -33,17 +33,17 @@ where
 
     // Get recorded transactions
     let import_hledger_account = import_account.get_hledger_account();
-    let recorded_transactions = hledger.fetch_transactions(&[import_hledger_account]).await;
+    let hledger_transactions = hledger.fetch_transactions(&[import_hledger_account]).await;
 
     info!(
         "Real transactions: {}. Recorded transactions {}.",
         real_transactions.len(),
-        recorded_transactions.len()
+        hledger_transactions.len()
     );
 
     let existing = transactions::get_existing_transactions(
         import_hledger_account,
-        &recorded_transactions,
+        &hledger_transactions,
         real_transactions,
     );
 
@@ -63,18 +63,15 @@ where
     let real_transactions = import_account.get_transactions().await;
 
     // Get recorded transactions
-    let recorded_transactions = hledger
+    let hledger_transactions = hledger
         .fetch_transactions(&[import_account.get_hledger_account()])
         .await;
 
     // Get rules
     let rules = get_rules(&db, &***import_account);
 
-    let generated = transactions::get_generated_transactions(
-        &recorded_transactions,
-        &real_transactions,
-        &rules,
-    );
+    let generated =
+        transactions::get_generated_transactions(&hledger_transactions, &real_transactions, &rules);
 
     HttpResponse::Ok().json(generated)
 }
@@ -97,10 +94,10 @@ where
     // Get rules
     let rules = get_rules(&db, &***import_account);
 
-    let mut generated: Vec<RecordedTransaction> =
+    let mut generated: Vec<HledgerTransaction> =
         transactions::get_generated_transactions(&hledger_transactions, &real_transactions, &rules)
             .into_iter()
-            .filter_map(|t| t.recorded_transaction)
+            .filter_map(|t| t.hledger_transaction)
             .collect();
 
     generated.sort_by_key(|a| a.get_date(Some(account)));
@@ -147,7 +144,7 @@ where
         })
         .map(|real| TransactionResponse {
             real_transaction: real.to_json_value(),
-            recorded_transaction: None,
+            hledger_transaction: None,
             rule: None,
         })
         .collect();
@@ -163,7 +160,7 @@ pub async fn generate_single_transaction(
         .render_description(&request.description_template, &request.source_transaction);
     match description {
         Ok(description) => {
-            let transaction = RecordedTransaction::new_with_postings(
+            let transaction = HledgerTransaction::new_with_postings(
                 &request.source_transaction,
                 &description,
                 &request.account,
@@ -220,13 +217,13 @@ where
     T: ImportAccount,
 {
     // Get recorded transactions
-    let recorded_transactions = hledger
+    let hledger_transactions = hledger
         .fetch_transactions(&[import_account.get_hledger_account()])
         .await;
 
     let mut recorded_ids: HashSet<&str> = HashSet::new();
     let mut dupe_ids: HashSet<&str> = HashSet::new();
-    for t in recorded_transactions.iter() {
+    for t in hledger_transactions.iter() {
         for id in t.get_ids() {
             let was_first = recorded_ids.insert(id);
             if !was_first {

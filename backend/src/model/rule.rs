@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::{real_transaction::RealTransaction, recorded_transaction::RecordedTransaction};
+use super::{hledger_transaction::HledgerTransaction, real_transaction::RealTransaction};
 use crate::templater::Templater;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -48,7 +48,7 @@ impl Rule {
         &self,
         templater: &Templater,
         real_transaction: &impl RealTransaction,
-    ) -> Option<RecordedTransaction> {
+    ) -> Option<HledgerTransaction> {
         if !self.matches(real_transaction) {
             return None;
         }
@@ -56,7 +56,7 @@ impl Rule {
             .render_description_from_rule(self, real_transaction)
             .unwrap_or_default();
 
-        Some(RecordedTransaction::new_with_postings(
+        Some(HledgerTransaction::new_with_postings(
             real_transaction,
             &description,
             &self.target_account,

@@ -17,7 +17,7 @@ use rust_decimal::Decimal;
 
 use crate::{
     file_utils::{get_imported_ledger_file, get_ledger_year_files},
-    model::recorded_transaction::RecordedTransaction,
+    model::hledger_transaction::HledgerTransaction,
 };
 
 const CONTENT_TYPE: &str = "Content-Type";
@@ -74,13 +74,13 @@ impl HledgerProcess {
             .collect()
     }
 
-    async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<RecordedTransaction> {
+    async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
         self.wait_for_hledger_process();
 
         // Fetch transactions from hledger-web API
         let request_url = format!("{}:{}/transactions", BASE_URL, self.port);
         let response = reqwest::get(request_url.as_str()).await.unwrap();
-        let all: Vec<RecordedTransaction> = response.json().await.unwrap();
+        let all: Vec<HledgerTransaction> = response.json().await.unwrap();
 
         // Filter transactions by given account name
         all.into_iter()
@@ -96,7 +96,7 @@ impl HledgerProcess {
     async fn write_transaction(
         &self,
         http_client: &reqwest::Client,
-        recorded: &RecordedTransaction,
+        recorded: &HledgerTransaction,
     ) -> bool {
         let json = serde_json::to_string(recorded).unwrap();
         let request_url = format!("{}:{}/add", BASE_URL, self.port);
@@ -210,7 +210,7 @@ impl Hledger {
         self.read_process.get_commodities().await
     }
 
-    pub async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<RecordedTransaction> {
+    pub async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
         self.read_process
             .fetch_transactions(account_names)
             .await
@@ -221,7 +221,7 @@ impl Hledger {
     }
 
     // TODO: proper errors
-    pub async fn write_single_transaction(&self, recorded: &RecordedTransaction) -> bool {
+    pub async fn write_single_transaction(&self, recorded: &HledgerTransaction) -> bool {
         if let Some(process) = self.write_processes.get(&recorded.get_date(None).year()) {
             process.wait_for_hledger_process();
 
@@ -237,7 +237,7 @@ impl Hledger {
     }
 
     // TODO: proper errors
-    pub async fn write_transactions(&self, recorded: &[RecordedTransaction]) -> bool {
+    pub async fn write_transactions(&self, recorded: &[HledgerTransaction]) -> bool {
         for t in recorded {
             let year = &t.get_date(None).year();
             if let Some(process) = self.write_processes.get(year) {

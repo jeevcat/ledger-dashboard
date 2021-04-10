@@ -109,7 +109,7 @@ enum SourcePos {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecordedTransaction {
+pub struct HledgerTransaction {
     pub tdescription: String,
     pub ttags: Vec<Vec<String>>,
     pub tpostings: Vec<Posting>,
@@ -123,7 +123,7 @@ pub struct RecordedTransaction {
     tsourcepos: SourcePos,
 }
 
-impl RecordedTransaction {
+impl HledgerTransaction {
     pub fn new(description: &str, date: NaiveDate, id: &str) -> Self {
         Self {
             tdescription: description.to_string(),

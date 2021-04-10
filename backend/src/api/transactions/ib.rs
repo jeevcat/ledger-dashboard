@@ -38,7 +38,7 @@ pub async fn get_unmatched_transactions() -> HttpResponse {
         .into_iter()
         .map(|real| TransactionResponse {
             real_transaction: real.to_json_value(),
-            recorded_transaction: None,
+            hledger_transaction: None,
             rule: None,
         })
         .collect();
