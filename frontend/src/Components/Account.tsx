@@ -35,13 +35,13 @@ export const AccountComponent: React.FC<Props> = ({ account }) => {
       );
     }
     if (balance) {
-      const diff = balance.real - balance.recorded;
+      const diff = balance.real - balance.hledger;
       const inSync = Math.abs(diff) < 0.1;
 
       return [
         <Table.Cell key="real">{asEuro(balance.real)}</Table.Cell>,
-        <Table.Cell key="recorded">{asEuro(balance.recorded)}</Table.Cell>,
-        <Table.Cell key="sync" negative={!inSync}>
+        <Table.Cell key="hledger">{asEuro(balance.hledger)}</Table.Cell>,
+        <Table.Cell key="sync" textAlign="center" negative={!inSync} positive={inSync}>
           {inSync ? (
             <Icon name="check" color="green" />
           ) : (

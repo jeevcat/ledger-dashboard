@@ -16,14 +16,12 @@ pub async fn get_existing_transactions(hledger: web::Data<Arc<Hledger>>) -> Http
     // Get real transactions
     let ib_report = Ib::read_report();
 
-    // Get recorded transactions
-    let hledger_transactions = hledger.fetch_transactions(IB_ACCOUNTS).await;
-
     let existing = transactions::get_existing_transactions(
-        IB_ACCOUNTS[0],
-        &hledger_transactions,
+        IB_ACCOUNTS,
+        &hledger,
         ib_report.get_transactions(),
-    );
+    )
+    .await;
 
     HttpResponse::Ok().json(existing)
 }

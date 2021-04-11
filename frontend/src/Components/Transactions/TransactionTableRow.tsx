@@ -60,7 +60,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
           }
           trigger={<Button icon="info" />}
         />
-        {importRow.real_transaction && !importRow.recorded_transaction && (
+        {importRow.real_transaction && !importRow.hledger_transaction && (
           <RecordTransactionModal realTransaction={importRow.real_transaction} onWrite={onTransactionWrite} />
         )}
       </Table.Cell>
@@ -71,7 +71,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
         </Table.Cell>
       )}
       {"real_cumulative" in importRow && <Table.Cell>{asEuro(importRow.real_cumulative)}</Table.Cell>}
-      {"recorded_cumulative" in importRow && <Table.Cell>{asEuro(importRow.recorded_cumulative)}</Table.Cell>}
+      {"hledger_cumulative" in importRow && <Table.Cell>{asEuro(importRow.hledger_cumulative)}</Table.Cell>}
       {"errors" in importRow && importRow.errors && (
         <Table.Cell textAlign="center">
           {importRow.errors.length > 0 ? (
@@ -83,9 +83,9 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
           )}
         </Table.Cell>
       )}
-      {importRow.recorded_transaction && (
+      {importRow.hledger_transaction && (
         <Table.Cell>
-          <GeneratedTransaction transaction={importRow.recorded_transaction!} />
+          <GeneratedTransaction transaction={importRow.hledger_transaction!} />
         </Table.Cell>
       )}
     </Table.Row>

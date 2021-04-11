@@ -93,6 +93,10 @@ impl Posting {
         }
     }
 
+    fn get_id(&self) -> Option<&str> {
+        get_uuid_from_tags(&self.ptags)
+    }
+
     fn get_amount(&self) -> Option<Decimal> {
         match self.pamount.len() {
             1 => Some((&self.pamount[0].aquantity).into()),
@@ -168,28 +172,59 @@ impl HledgerTransaction {
         self
     }
 
-    pub fn get_ids(&self) -> impl Iterator<Item = &str> {
-        self.tpostings
-            .iter()
-            .filter_map(|p| get_uuid_from_tags(&p.ptags))
-            .chain(get_uuid_from_tags(&self.ttags).into_iter())
+    pub fn get_all_ids(&self, account: &str) -> impl Iterator<Item = &str> {
+        self.get_postings(account)
+            .into_iter()
+            .filter_map(Posting::get_id)
+            .chain(self.get_id().into_iter())
     }
 
-    pub fn get_amount(&self, account: &str) -> Option<Decimal> {
-        self.get_posting(account).map(|p| p.get_amount()).flatten()
+    pub fn get_amount(&self, id: Option<&str>, account: &str) -> Option<Decimal> {
+        if let Some(id) = id {
+            let amount = self.get_amount_for_posting_id(id);
+            if amount.is_some() {
+                return amount;
+            }
+        }
+        self.find_amount_from_account(account)
     }
 
     pub fn get_date(&self, account: Option<&str>) -> NaiveDate {
         if let Some(account) = account {
-            if let Some(date) = self.get_posting(account).map(|p| p.pdate).flatten() {
+            if let Some(date) = self.get_postings(account).into_iter().find_map(|p| p.pdate) {
                 return date;
             }
         }
         self.tdate
     }
 
-    fn get_posting(&self, account: &str) -> Option<&Posting> {
-        self.tpostings.iter().find(|p| p.paccount == account)
+    pub fn get_id(&self) -> Option<&str> {
+        get_uuid_from_tags(&self.ttags)
+    }
+
+    // When id is non-posting id, then need to search for amount via account
+    fn find_amount_from_account(&self, account: &str) -> Option<Decimal> {
+        self.get_postings(account)
+            .into_iter()
+            .find_map(|p| p.get_amount())
+    }
+
+    fn get_amount_for_posting_id(&self, id: &str) -> Option<Decimal> {
+        self.get_posting(id).map(Posting::get_amount).flatten()
+    }
+
+    fn get_posting(&self, id: &str) -> Option<&Posting> {
+        self.tpostings.iter().find(|p| match p.get_id() {
+            Some(pid) => pid == id,
+            None => false,
+        })
+    }
+
+    fn get_postings(&self, account: &str) -> Vec<&Posting> {
+        self.tpostings
+            .iter()
+            .filter(|p| p.paccount == account)
+            .collect()
     }
 }
 

@@ -1,4 +1,4 @@
-import { RecordedTransaction } from "./RecordedTransaction";
+import { HledgerTransaction } from "./HledgerTransaction";
 import { Rule } from "./Rule";
 
 export interface RealTransaction {
@@ -6,18 +6,18 @@ export interface RealTransaction {
 }
 
 export type RealTransactionField = keyof RealTransaction;
-export type TransactionField = keyof RecordedTransaction;
+export type TransactionField = keyof HledgerTransaction;
 
 export interface TransactionResponse {
   real_transaction: RealTransaction;
-  recorded_transaction?: RecordedTransaction;
+  hledger_transaction?: HledgerTransaction;
   rule?: Rule;
 }
 
 export interface ExistingTransactionResponse {
   real_transaction: RealTransaction | null;
-  recorded_transaction: RecordedTransaction;
+  hledger_transaction: HledgerTransaction;
   real_cumulative: number;
-  recorded_cumulative: number;
+  hledger_cumulative: number;
   errors: string[];
 }

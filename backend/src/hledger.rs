@@ -86,9 +86,11 @@ impl HledgerProcess {
         all.into_iter()
             .rev()
             .filter(|t| {
-                t.tpostings
-                    .iter()
-                    .any(|p| account_names.iter().any(|n| p.paccount.as_str() == *n))
+                !t.tdescription.contains("opening balances")
+                    && !t.tdescription.contains("closing balances")
+                    && t.tpostings
+                        .iter()
+                        .any(|p| account_names.contains(&p.paccount.as_str()))
             })
             .collect()
     }
@@ -211,13 +213,7 @@ impl Hledger {
     }
 
     pub async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
-        self.read_process
-            .fetch_transactions(account_names)
-            .await
-            // Ignore transactions without id
-            .into_iter()
-            .filter(|t| t.get_ids().next().is_some())
-            .collect()
+        self.read_process.fetch_transactions(account_names).await
     }
 
     // TODO: proper errors

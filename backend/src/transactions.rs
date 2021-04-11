@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use rust_decimal::Decimal;
 
 use crate::{
+    hledger::Hledger,
     model::{
         hledger_transaction::HledgerTransaction,
         real_transaction::RealTransaction,
@@ -12,9 +13,9 @@ use crate::{
     templater::Templater,
 };
 
-pub fn get_existing_transactions<J, K>(
-    import_hledger_account: &str,
-    hledger_transactions: &[HledgerTransaction],
+pub async fn get_existing_transactions<J, K>(
+    import_hledger_accounts: &[&str],
+    hledger: &Hledger,
     real_transactions: J,
 ) -> Vec<ExistingTransactionResponse>
 where
@@ -26,46 +27,68 @@ where
         .map(move |t| (t.get_id().to_string(), t))
         .collect();
 
+    let hledger_transactions = hledger.fetch_transactions(import_hledger_accounts).await;
+
+    // TODO fix this account array stuff
+    let import_hledger_account = import_hledger_accounts[0];
+
     // Collect unique ids so we can check for duplicates
     let mut distinct_recorded_ids = HashMap::<&str, u8>::new();
-    for t in hledger_transactions {
-        for id in t.get_ids() {
+    for t in &hledger_transactions {
+        for id in t.get_all_ids(import_hledger_account) {
             let counter = distinct_recorded_ids.entry(id).or_insert(0);
             *counter += 1;
         }
     }
 
-    let mut hledger_transactions = hledger_transactions.to_vec();
+    let balance = hledger
+        .get_account_balance(import_hledger_account)
+        .await
+        .unwrap_or_default();
+
+    // TODO: Remove need for this clone?
+    let mut hledger_transactions = hledger_transactions.clone();
     hledger_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
     hledger_transactions
         .iter()
-        .scan(
-            (Decimal::new(0, 0), Decimal::new(0, 0)),
-            |(rec_sum, real_sum), rec| {
-                if let Some(amount) = rec.get_amount(import_hledger_account) {
-                    *rec_sum += amount;
-                }
-                let real = rec.get_ids().find_map(|id| real_transactions.get(id));
+        .rev()
+        .flat_map(|h| {
+            let ids: Vec<&str> = h.get_all_ids(import_hledger_account).collect();
+            if ids.is_empty() {
+                return vec![(h, None)];
+            } else {
+                ids.into_iter().map(|id| (h, Some(id))).collect::<Vec<_>>()
+            }
+        })
+        .scan((balance, balance), |(h_sum, r_sum), (h, id)| {
+            // This unwrap is safe. We can be sure that there will always be an amount.
+            let h_amount = h.get_amount(id, import_hledger_account).unwrap();
+            *h_sum -= h_amount;
+
+            let mut real = None;
+            if let Some(id) = id {
+                real = real_transactions.get(id);
                 if let Some(real) = real {
-                    *real_sum += real.get_amount();
+                    *r_sum -= real.get_amount();
                 }
-                Some(((rec, real), (*rec_sum, *real_sum)))
-            },
-        )
-        .map(|((rec, real), (recorded_cumulative, real_cumulative))| {
-            let real_json = real.map_or(serde_json::Value::Null, |real| real.to_json_value());
+            }
+            Some(((h, real), (*h_sum, *r_sum)))
+        })
+        .map(|((h, r), (recorded_cumulative, real_cumulative))| {
+            let real_json = r.map_or(serde_json::Value::Null, |real| real.to_json_value());
             ExistingTransactionResponse {
                 real_transaction: real_json,
-                hledger_transaction: rec.to_owned(),
+                hledger_transaction: h.to_owned(),
                 real_cumulative,
-                recorded_cumulative,
-                errors: get_errors(import_hledger_account, &distinct_recorded_ids, &real, rec),
+                hledger_cumulative: recorded_cumulative,
+                errors: get_errors(import_hledger_account, &distinct_recorded_ids, &r, &h),
             }
         })
         .collect()
 }
 
 pub fn get_generated_transactions<'a, ReaIter, Rea>(
+    import_hledger_account: &str,
     hledger_transactions: &[HledgerTransaction],
     real_transactions: ReaIter,
     rules: &[Rule],
@@ -80,7 +103,7 @@ where
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
     let recorded_ids: HashSet<&str> = hledger_transactions
         .iter()
-        .flat_map(|t| t.get_ids())
+        .flat_map(|t| t.get_all_ids(import_hledger_account))
         .collect();
 
     real_transactions
@@ -103,11 +126,11 @@ where
 fn get_errors(
     import_hledger_account: &str,
     distinct_recorded_ids: &HashMap<&str, u8>,
-    real: &Option<&impl RealTransaction>,
-    recorded: &HledgerTransaction,
+    real_transaction: &Option<&impl RealTransaction>,
+    hledger_transaction: &HledgerTransaction,
 ) -> Vec<String> {
-    let mut errors: Vec<String> = recorded
-        .get_ids()
+    let mut errors: Vec<String> = hledger_transaction
+        .get_all_ids(import_hledger_account)
         .filter_map(|id| {
             distinct_recorded_ids.get(id).map(|count| {
                 if count > &1 {
@@ -119,18 +142,19 @@ fn get_errors(
         })
         .flatten()
         .collect();
-    if let Some(real) = real {
-        if let Some(amount) = recorded.get_amount(import_hledger_account) {
-            if amount != real.get_amount() {
-                errors.push("Amounts don't match".to_string());
-            }
+    if let Some(r) = real_transaction {
+        let amount: Decimal = hledger_transaction
+            .get_amount(Some(&r.get_id()), import_hledger_account)
+            .unwrap();
+        if amount != r.get_amount() {
+            errors.push("Amounts don't match".to_string());
         }
-        let rec_date = recorded.get_date(Some(import_hledger_account));
-        if rec_date != real.get_date() {
+        let h_date = hledger_transaction.get_date(Some(import_hledger_account));
+        if h_date != r.get_date() {
             errors.push(format!(
-                "Dates don't match. Rec: {}. Real: {}",
-                rec_date,
-                real.get_date()
+                "Dates don't match. hledger: {}. Real: {}",
+                h_date,
+                r.get_date()
             ));
         }
     } else {
@@ -198,7 +222,8 @@ mod tests {
 
     #[test]
     fn generated() {
-        let gen = get_generated_transactions(&*RECORDED, &*REAL, &*RULES);
+        let account = "Assets:Cash:N26";
+        let gen = get_generated_transactions(account, &*RECORDED, &*REAL, &*RULES);
         // 1st item is filtered as already recorded, 2nd item doesn't match rule
         assert_eq!(gen.len(), 1);
         let gen = &gen[0];
@@ -217,7 +242,7 @@ mod tests {
         assert_eq!(date.day(), 13);
         assert_eq!(t.ttags[0][0], "uuid");
         assert_eq!(t.ttags[0][1], REAL[2].get_id());
-        assert_eq!(t.tpostings[0].paccount, "Assets:Cash:N26");
+        assert_eq!(t.tpostings[0].paccount, account);
         assert_eq!(t.tpostings[1].paccount, "Expenses:Personal:Fun");
     }
 }

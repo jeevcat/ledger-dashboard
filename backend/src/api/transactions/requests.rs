@@ -32,20 +32,10 @@ where
     let real_transactions = import_account.get_transactions().await;
 
     // Get recorded transactions
-    let import_hledger_account = import_account.get_hledger_account();
-    let hledger_transactions = hledger.fetch_transactions(&[import_hledger_account]).await;
+    let account_names = [import_account.get_hledger_account()];
 
-    info!(
-        "Real transactions: {}. Recorded transactions {}.",
-        real_transactions.len(),
-        hledger_transactions.len()
-    );
-
-    let existing = transactions::get_existing_transactions(
-        import_hledger_account,
-        &hledger_transactions,
-        real_transactions,
-    );
+    let existing =
+        transactions::get_existing_transactions(&account_names, &hledger, real_transactions).await;
 
     HttpResponse::Ok().json(existing)
 }
@@ -70,8 +60,14 @@ where
     // Get rules
     let rules = get_rules(&db, &***import_account);
 
-    let generated =
-        transactions::get_generated_transactions(&hledger_transactions, &real_transactions, &rules);
+    let import_hledger_account = import_account.get_hledger_account();
+
+    let generated = transactions::get_generated_transactions(
+        import_hledger_account,
+        &hledger_transactions,
+        &real_transactions,
+        &rules,
+    );
 
     HttpResponse::Ok().json(generated)
 }
@@ -94,11 +90,15 @@ where
     // Get rules
     let rules = get_rules(&db, &***import_account);
 
-    let mut generated: Vec<HledgerTransaction> =
-        transactions::get_generated_transactions(&hledger_transactions, &real_transactions, &rules)
-            .into_iter()
-            .filter_map(|t| t.hledger_transaction)
-            .collect();
+    let mut generated: Vec<HledgerTransaction> = transactions::get_generated_transactions(
+        account,
+        &hledger_transactions,
+        &real_transactions,
+        &rules,
+    )
+    .into_iter()
+    .filter_map(|t| t.hledger_transaction)
+    .collect();
 
     generated.sort_by_key(|a| a.get_date(Some(account)));
     info!("Writing {} transactions to hledger", generated.len());
@@ -127,10 +127,11 @@ where
     let hledger_transactions = hledger
         .fetch_transactions(&[import_account.get_hledger_account()])
         .await;
+    let account = import_account.get_hledger_account();
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
     let recorded_ids: HashSet<&str> = hledger_transactions
         .iter()
-        .flat_map(|t| t.get_ids())
+        .flat_map(|t| t.get_all_ids(account))
         .collect();
 
     // Get rules
@@ -221,10 +222,11 @@ where
         .fetch_transactions(&[import_account.get_hledger_account()])
         .await;
 
+    let account = import_account.get_hledger_account();
     let mut recorded_ids: HashSet<&str> = HashSet::new();
     let mut dupe_ids: HashSet<&str> = HashSet::new();
     for t in hledger_transactions.iter() {
-        for id in t.get_ids() {
+        for id in t.get_all_ids(account) {
             let was_first = recorded_ids.insert(id);
             if !was_first {
                 dupe_ids.insert(id);

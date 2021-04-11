@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { Breadcrumb, Card, Label, Popup } from "semantic-ui-react";
-import { getAmount, getDate, getId, getTargetAccount, RecordedTransaction } from "../../Models/RecordedTransaction";
+import { getAmount, getDate, getId, getTargetAccount, HledgerTransaction } from "../../Models/HledgerTransaction";
 import { AccountsContext } from "../../Utils/AccountsContext";
 
 const formatter = new Intl.NumberFormat("en-US", {
@@ -9,7 +9,7 @@ const formatter = new Intl.NumberFormat("en-US", {
 });
 
 interface Props {
-  transaction: RecordedTransaction;
+  transaction: HledgerTransaction;
 }
 
 const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {

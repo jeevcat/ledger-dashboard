@@ -1,4 +1,4 @@
 export interface Balance {
   real: number;
-  recorded: number;
+  hledger: number;
 }

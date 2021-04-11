@@ -26,6 +26,9 @@ where
         Some(recorded) => recorded,
         None => return HttpResponse::InternalServerError().finish(),
     };
-    let response = BalanceResponse { recorded, real };
+    let response = BalanceResponse {
+        hledger: recorded,
+        real,
+    };
     HttpResponse::Ok().json(response)
 }

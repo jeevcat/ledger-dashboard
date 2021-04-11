@@ -83,6 +83,11 @@ export const TransactionTabs: React.FC<Props> = ({
           />
         </Menu.Menu>
         <Menu.Menu position="right">
+          <Pagination
+            activePage={pageNum}
+            totalPages={Math.trunc(transactions.length / maxTransactionsPerPage + 1)}
+            onPageChange={onPageChange}
+          />
           <Input
             icon="search"
             iconPosition="left"
@@ -111,12 +116,6 @@ export const TransactionTabs: React.FC<Props> = ({
           <Statistic.Value>{transactions.length}</Statistic.Value>
           <Statistic.Label>Transactions</Statistic.Label>
         </Statistic>
-        <br />
-        <Pagination
-          activePage={pageNum}
-          totalPages={Math.trunc(transactions.length / maxTransactionsPerPage + 1)}
-          onPageChange={onPageChange}
-        />
       </Segment>
     </div>
   );

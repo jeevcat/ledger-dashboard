@@ -10,14 +10,14 @@ import RulesModal from "./Rules/RulesModal";
 import { Tab, TransactionTabs } from "./Transactions/TransactionTabs";
 
 export enum TransactionTabType {
-  Recorded = "recorded",
+  Hledger = "hledger",
   Generated = "generated",
   Unmatched = "unmatched",
 }
 
 export const tabs: { [x in TransactionTabType]: Tab } = {
-  recorded: {
-    name: "Recorded Transactions",
+  hledger: {
+    name: "hledger Transactions",
     icon: "hdd",
     transactionSource: getExistingTransactions,
   },
@@ -46,7 +46,7 @@ export const Import: React.FC = () => {
     path: `${path}/:tabId`,
   })?.params.tabId;
 
-  const [tabId, setTabId] = useState<TransactionTabType>(initialTabId ?? TransactionTabType.Recorded);
+  const [tabId, setTabId] = useState<TransactionTabType>(initialTabId ?? TransactionTabType.Hledger);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [realTransactionFields, setRealTransactionFields] = useState<RealTransactionField[]>([]);
@@ -83,8 +83,6 @@ export const Import: React.FC = () => {
         });
     }
   };
-
-  const updateFilter = (newFilter: string) => setFilter(newFilter);
 
   const getFilteredTransactions = (): TransactionResponse[] =>
     transactions.filter((t) =>
@@ -144,11 +142,11 @@ export const Import: React.FC = () => {
                   onRuleSaved={fetchTransactions}
                   onTransactionWrite={fetchTransactions}
                   filter={filter}
-                  handleFilterChanged={updateFilter}
+                  handleFilterChanged={setFilter}
                 />
               )}
             </Route>
-            <Redirect to={`${path}/recorded`} />
+            <Redirect to={`${path}/hledger`} />
           </Switch>
         </Segment>
       </AccountsContextComponent>

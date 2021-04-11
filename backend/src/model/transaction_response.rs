@@ -21,6 +21,6 @@ pub struct ExistingTransactionResponse {
     // For now a hledger transaction. None if unmatched.
     pub hledger_transaction: HledgerTransaction,
     pub real_cumulative: Decimal,
-    pub recorded_cumulative: Decimal,
+    pub hledger_cumulative: Decimal,
     pub errors: Vec<String>,
 }

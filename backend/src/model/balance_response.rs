@@ -3,6 +3,6 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct BalanceResponse {
-    pub recorded: Decimal,
+    pub hledger: Decimal,
     pub real: Decimal,
 }

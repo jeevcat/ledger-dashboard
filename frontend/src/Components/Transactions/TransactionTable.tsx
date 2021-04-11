@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Table } from "semantic-ui-react";
+import { getId } from "../../Models/HledgerTransaction";
 import { ExistingTransactionResponse, RealTransaction, TransactionResponse } from "../../Models/ImportRow";
-import { getId } from "../../Models/RecordedTransaction";
 import { maxTransactionsPerPage } from "../../Utils/Config";
 import { toTitleCase } from "../../Utils/TextUtils";
 import TransactionTableRow from "./TransactionTableRow";
@@ -38,6 +38,11 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
     if (sortedColumn === "errors" && "errors" in a && "errors" in b && a.errors && b.errors) {
       const valA = a.errors;
       const valB = b.errors;
+      return sortCompareBase(valA, valB);
+    }
+    if (sortedColumn === "generated" && a.hledger_transaction && b.hledger_transaction) {
+      const valA = a.hledger_transaction.tdate;
+      const valB = b.hledger_transaction.tdate;
       return sortCompareBase(valA, valB);
     }
     if (!a.real_transaction || !b.real_transaction) {
@@ -84,17 +89,23 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
             </Table.HeaderCell>
           )}
           {"real_cumulative" in t && <Table.HeaderCell>Cumulative</Table.HeaderCell>}
-          {"recorded_cumulative" in t && <Table.HeaderCell>Recorded Cumulative</Table.HeaderCell>}
+          {"hledger_cumulative" in t && <Table.HeaderCell>hledger Cumulative</Table.HeaderCell>}
           {"errors" in t && (
             <Table.HeaderCell
-              textAlign="center"
               sorted={sortedColumn === "errors" ? sortDirection : undefined}
               onClick={() => handleSort("errors")}
             >
               Errors
             </Table.HeaderCell>
           )}
-          {t.recorded_transaction && <Table.HeaderCell>{"rule" in t ? "Generated" : "Recorded"}</Table.HeaderCell>}
+          {t.hledger_transaction && (
+            <Table.HeaderCell
+              sorted={sortedColumn === "generated" ? sortDirection : undefined}
+              onClick={() => handleSort("generated")}
+            >
+              hledger Transaction
+            </Table.HeaderCell>
+          )}
         </Table.Row>
       </Table.Header>
       <Table.Body>
@@ -103,7 +114,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
           .slice((pageNum - 1) * maxTransactionsPerPage, pageNum * maxTransactionsPerPage)
           .map((r) => (
             <TransactionTableRow
-              key={r.real_transaction?.id ?? getId(r.recorded_transaction!)}
+              key={r.real_transaction?.id ?? getId(r.hledger_transaction!)}
               realTransactionFields={selectedFields}
               importRow={r}
               onTransactionWrite={onTransactionWrite}
