@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use chrono::NaiveDate;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
@@ -15,7 +17,7 @@ impl From<Decimal> for Quantity {
     fn from(decimal: Decimal) -> Self {
         let floating_point = decimal.to_f64().unwrap_or_default();
         let decimal_places = decimal.scale();
-        let decimal_mantissa = (10f64.powf(decimal_places as f64) * floating_point) as i64;
+        let decimal_mantissa = decimal.mantissa().try_into().unwrap();
         Quantity {
             floating_point,
             decimal_places,
@@ -242,7 +244,7 @@ mod tests {
 
     #[test]
     fn check_decimal_conversion() {
-        let decimal = Decimal::from_f32(1239.53).unwrap();
+        let decimal = Decimal::from_f32(163.17).unwrap();
         let quantity: Quantity = decimal.into();
         let decimal2: Decimal = quantity.into();
         assert_eq!(decimal, decimal2);

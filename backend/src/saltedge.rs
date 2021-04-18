@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use log::info;
 use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{
@@ -25,6 +26,7 @@ impl SaltEdge {
         }
     }
 
+    // TODO: Pagination https://docs.saltedge.com/general/#pagination
     async fn request<T>(&self, url: &str) -> T
     where
         T: DeserializeOwned,
@@ -42,6 +44,7 @@ impl SaltEdge {
             .query(&[
                 ("connection_id", connection_id),
                 ("account_id", account_id()),
+                ("per_page", 1000.to_string()),
             ])
             .send()
             .await
@@ -57,7 +60,9 @@ impl ImportAccount for SaltEdge {
 
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
         let url = "https://www.saltedge.com/api/v5/transactions";
-        self.request::<Vec<SaltEdgeTransaction>>(url).await
+        let transactions = self.request::<Vec<SaltEdgeTransaction>>(url).await;
+        info!("Got {} transactions from Salt Edge", transactions.len());
+        transactions
     }
 
     async fn get_balance(&self) -> rust_decimal::Decimal {
