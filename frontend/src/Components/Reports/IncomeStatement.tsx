@@ -14,7 +14,8 @@ const opts: uPlot.Options = {
   ],
 };
 
-const now = Date.now();
+// Timestamp in seconds
+const now = Math.floor(Date.now() / 1000);
 
 const data: AlignedData = [
   [now, now + 60, now + 120, now + 180],

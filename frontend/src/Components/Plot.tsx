@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
@@ -7,29 +7,40 @@ interface Props {
   data: uPlot.AlignedData;
 }
 
-function useWindowSize() {
-  const [size, setSize] = useState([0, 0]);
+export const Plot: React.FC<Props> = ({ options, data }) => {
+  const plotDivRef = useRef<HTMLDivElement>(null);
+  const plotInstanceRef = useRef<uPlot | null>(null);
+
+  // Create uPlot instance
+  useEffect(() => {
+    if (plotDivRef.current !== null && plotInstanceRef.current === null) {
+      console.debug("[uplot] create instance");
+      const availableSize = plotDivRef.current?.getBoundingClientRect();
+      if (availableSize) {
+        options.width = availableSize.width;
+      }
+      const uPlotInstance = new uPlot(options, data, plotDivRef.current);
+      plotInstanceRef.current = uPlotInstance;
+
+      return () => {
+        (plotInstanceRef.current as uPlot).destroy();
+        plotInstanceRef.current = null;
+      };
+    }
+  }, [data, options]);
+
+  // Subscribe to resize events
   useLayoutEffect(() => {
     function updateSize() {
-      setSize([window.innerWidth, window.innerHeight]);
+      const availableSize = plotDivRef.current?.getBoundingClientRect();
+      if (availableSize) {
+        plotInstanceRef.current?.setSize({ height: plotInstanceRef.current?.height, width: availableSize.width });
+      }
     }
+
     window.addEventListener("resize", updateSize);
-    updateSize();
     return () => window.removeEventListener("resize", updateSize);
   }, []);
-  return size;
-}
 
-export const Plot: React.FC<Props> = ({ options, data }) => {
-  const plotRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [width, height] = useWindowSize();
-  useEffect(() => {
-    const availableWidth = plotRef.current?.getBoundingClientRect().width;
-    if (availableWidth) {
-      options.width = availableWidth - 50;
-    }
-    new uPlot(options, data, plotRef.current as HTMLDivElement);
-  }, [options, data]);
-  return <div ref={plotRef} />;
+  return <div ref={plotDivRef} />;
 };
