@@ -1,3 +1,4 @@
+pub mod aligned_data;
 pub mod balance_response;
 pub mod hledger_transaction;
 pub mod ib_report;

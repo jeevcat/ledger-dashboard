@@ -1,3 +1,4 @@
+import { AlignedData } from "uplot";
 import { Balance } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { TransactionResponse } from "../Models/ImportRow";
@@ -30,6 +31,8 @@ export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 export const getAccounts = (): Promise<string[]> => get("accounts");
 
 export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.id}`);
+
+export const getIncomeStatement = (): Promise<AlignedData> => get("reports/income_statement");
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;

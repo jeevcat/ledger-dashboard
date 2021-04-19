@@ -34,6 +34,7 @@ pub async fn run_server() -> io::Result<()> {
             .service(api::transactions::routes::transactions_routes())
             .service(api::accounts::accounts_routes())
             .service(api::balance::balance_routes())
+            .service(api::reports::reports_routes())
             .service(api::prices::prices_routes())
     })
     .bind("0.0.0.0:8080")?

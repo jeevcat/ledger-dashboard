@@ -4,10 +4,10 @@ use log::info;
 
 use crate::config;
 
-pub fn get_imported_ledger_file() -> PathBuf {
+pub fn get_default_ledger_file() -> PathBuf {
     get_journal_path()
         .unwrap_or_else(|| panic!("Can't determine journal path"))
-        .join("imported.ledger")
+        .join("ledger.ledger")
 }
 
 pub fn get_ledger_year_file(year: i32) -> Option<PathBuf> {
