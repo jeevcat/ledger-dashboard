@@ -54,7 +54,7 @@ where
 
     // Get recorded transactions
     let hledger_transactions = hledger
-        .fetch_transactions(&[import_account.get_hledger_account()])
+        .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
 
     // Get rules
@@ -85,7 +85,7 @@ where
 
     let account = import_account.get_hledger_account();
     // Get recorded transactions
-    let hledger_transactions = hledger.fetch_transactions(&[account]).await;
+    let hledger_transactions = hledger.fetch_account_transactions(&[account]).await;
 
     // Get rules
     let rules = get_rules(&db, &***import_account);
@@ -125,7 +125,7 @@ where
 
     // Get recorded transactions
     let hledger_transactions = hledger
-        .fetch_transactions(&[import_account.get_hledger_account()])
+        .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
     let account = import_account.get_hledger_account();
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
@@ -219,7 +219,7 @@ where
 {
     // Get recorded transactions
     let hledger_transactions = hledger
-        .fetch_transactions(&[import_account.get_hledger_account()])
+        .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
 
     let account = import_account.get_hledger_account();

@@ -1,7 +1,13 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Breadcrumb, Card, Label, Popup } from "semantic-ui-react";
-import { getAmount, getDate, getId, getTargetAccount, HledgerTransaction } from "../../Models/HledgerTransaction";
-import { AccountsContext } from "../../Utils/AccountsContext";
+import {
+  getAmount,
+  getDate,
+  getId,
+  getMatchingAccount,
+  getUnmatchingAccount,
+  HledgerTransaction,
+} from "../../Models/HledgerTransaction";
 
 const formatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -10,20 +16,23 @@ const formatter = new Intl.NumberFormat("en-US", {
 
 interface Props {
   transaction: HledgerTransaction;
+  account: string;
+  // Multiply amount by -1 if true
+  negative?: boolean;
 }
 
-const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
-  const {
-    importAccount: { id: path },
-  } = useContext(AccountsContext);
-
-  const accountSections = getTargetAccount(transaction, path)
+const GeneratedTransaction: React.FC<Props> = ({ transaction, account, negative }) => {
+  const accountSections = (negative
+    ? getMatchingAccount(transaction, account)
+    : getUnmatchingAccount(transaction, account)
+  )
     ?.split(":")
     .map((v) => {
       return { key: v, content: v };
     });
 
-  const amount = getAmount(transaction, path);
+  const amt = getAmount(transaction, account);
+  const amount = negative ? -amt : amt;
 
   return (
     <Popup
@@ -34,7 +43,6 @@ const GeneratedTransaction: React.FC<Props> = ({ transaction }) => {
           <Card.Content>
             <Card.Header>{transaction.tdescription}</Card.Header>
             <Card.Meta>{getDate(transaction)}</Card.Meta>
-
             <Card.Description>
               <Breadcrumb icon="right angle" sections={accountSections} />
             </Card.Description>

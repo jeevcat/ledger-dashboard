@@ -1,7 +1,7 @@
-import { AlignedData } from "uplot";
 import { Balance } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { TransactionResponse } from "../Models/ImportRow";
+import { IncomeStatementResponse } from "../Models/IncomeStatementResponse";
 import { Rule } from "../Models/Rule";
 import { TransactionRequest } from "../Models/TransactionRequest";
 
@@ -32,7 +32,7 @@ export const getAccounts = (): Promise<string[]> => get("accounts");
 
 export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.id}`);
 
-export const getIncomeStatement = (): Promise<AlignedData> => get("reports/income_statement");
+export const getIncomeStatement = (): Promise<IncomeStatementResponse> => get("reports/income_statement");
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;

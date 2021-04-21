@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Button, Label, Popup, Table } from "semantic-ui-react";
 import {
   ExistingTransactionResponse,
@@ -6,6 +6,7 @@ import {
   RealTransactionField,
   TransactionResponse,
 } from "../../Models/ImportRow";
+import { AccountsContext } from "../../Utils/AccountsContext";
 import { asCurrency, asDate, asEuro } from "../../Utils/TextUtils";
 import RecordTransactionModal from "../RecordTransactionModal";
 import TransactionSummary from "../TransactionSummary";
@@ -20,6 +21,10 @@ interface Props {
 }
 
 const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields, onTransactionWrite }) => {
+  const {
+    importAccount: { id: path },
+  } = useContext(AccountsContext);
+
   const formatField = (field: RealTransactionField) => {
     const val = importRow.real_transaction ? importRow.real_transaction[field] : null;
     if (!val) {
@@ -85,7 +90,7 @@ const TransactionTableRow: React.FC<Props> = ({ importRow, realTransactionFields
       )}
       {importRow.hledger_transaction && (
         <Table.Cell>
-          <GeneratedTransaction transaction={importRow.hledger_transaction!} />
+          <GeneratedTransaction transaction={importRow.hledger_transaction!} account={path} />
         </Table.Cell>
       )}
     </Table.Row>

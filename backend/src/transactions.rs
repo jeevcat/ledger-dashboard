@@ -27,7 +27,9 @@ where
         .map(move |t| (t.get_id().to_string(), t))
         .collect();
 
-    let hledger_transactions = hledger.fetch_transactions(import_hledger_accounts).await;
+    let hledger_transactions = hledger
+        .fetch_account_transactions(import_hledger_accounts)
+        .await;
 
     // TODO fix this account array stuff
     let import_hledger_account = import_hledger_accounts[0];

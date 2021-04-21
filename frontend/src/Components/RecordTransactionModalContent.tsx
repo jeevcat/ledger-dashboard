@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Grid, Header, Input, Loader, Modal } from "semantic-ui-react";
-import { RealTransaction } from "../Models/ImportRow";
 import { HledgerTransaction } from "../Models/HledgerTransaction";
+import { RealTransaction } from "../Models/ImportRow";
+import { AccountsContext } from "../Utils/AccountsContext";
 import { generateSingleTransaction } from "../Utils/BackendRequester";
 import LedgerAccountsDropdown from "./LedgerAccountsDropdown";
 import GeneratedTransaction from "./Transactions/GeneratedTransaction";
@@ -22,6 +23,10 @@ const RecordTransactionModalContent: React.FC<Props> = ({
   descriptionTemplate,
   onDescriptionTemplateChange,
 }) => {
+  const {
+    importAccount: { id: path },
+  } = useContext(AccountsContext);
+
   const [generatedTransaction, setGeneratedTransaction] = useState<HledgerTransaction | undefined>(undefined);
 
   useEffect(() => {
@@ -65,7 +70,11 @@ const RecordTransactionModalContent: React.FC<Props> = ({
             />
           </Grid.Column>
           <Grid.Column>
-            {generatedTransaction ? <GeneratedTransaction transaction={generatedTransaction} /> : <Loader />}
+            {generatedTransaction ? (
+              <GeneratedTransaction transaction={generatedTransaction} account={path} />
+            ) : (
+              <Loader />
+            )}
           </Grid.Column>
         </Grid>
       </Modal.Description>

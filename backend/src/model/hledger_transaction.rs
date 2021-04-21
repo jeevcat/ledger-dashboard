@@ -204,6 +204,10 @@ impl HledgerTransaction {
         get_uuid_from_tags(&self.ttags)
     }
 
+    pub fn has_account(&self, account: &str) -> bool {
+        !self.get_postings(account).is_empty()
+    }
+
     // When id is non-posting id, then need to search for amount via account
     fn find_amount_from_account(&self, account: &str) -> Option<Decimal> {
         self.get_postings(account)
@@ -225,7 +229,7 @@ impl HledgerTransaction {
     fn get_postings(&self, account: &str) -> Vec<&Posting> {
         self.tpostings
             .iter()
-            .filter(|p| p.paccount == account)
+            .filter(|p| p.paccount.contains(account))
             .collect()
     }
 }

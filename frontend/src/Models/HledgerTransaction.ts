@@ -53,7 +53,11 @@ export const getId = (t: HledgerTransaction): string | undefined => {
 
 export const getDate = (t: HledgerTransaction): string => asDate(t.tdate);
 
-export const getTargetAccount = (t: HledgerTransaction, importAccountId: string): string | undefined => {
+export const getMatchingAccount = (t: HledgerTransaction, importAccountId: string): string | undefined => {
+  return t.tpostings?.find((p: Posting) => p.paccount.toLowerCase().includes(importAccountId.toLowerCase()))?.paccount;
+};
+
+export const getUnmatchingAccount = (t: HledgerTransaction, importAccountId: string): string | undefined => {
   return t.tpostings?.find((p: Posting) => !p.paccount.toLowerCase().includes(":" + importAccountId.toLowerCase()))
     ?.paccount;
 };

@@ -1,4 +1,5 @@
 use std::{
+    cmp::Reverse,
     collections::HashMap,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
@@ -17,7 +18,10 @@ use rust_decimal::{prelude::ToPrimitive, Decimal};
 
 use crate::{
     file_utils::{get_default_ledger_file, get_ledger_year_files},
-    model::{aligned_data::AlignedData, hledger_transaction::HledgerTransaction},
+    model::{
+        aligned_data::AlignedData, hledger_transaction::HledgerTransaction,
+        income_statement::IncomeStatementResponse,
+    },
 };
 
 const CONTENT_TYPE: &str = "Content-Type";
@@ -75,23 +79,25 @@ impl HledgerProcess {
             .collect()
     }
 
-    async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
+    async fn fetch_all_transactions(&self) -> Vec<HledgerTransaction> {
         self.wait_for_hledger_process();
 
         // Fetch transactions from hledger-web API
         let request_url = format!("{}:{}/transactions", BASE_URL, self.port);
         let response = reqwest::get(request_url.as_str()).await.unwrap();
-        let all: Vec<HledgerTransaction> = response.json().await.unwrap();
+        response.json().await.unwrap()
+    }
+
+    async fn fetch_account_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
+        let all: Vec<HledgerTransaction> = self.fetch_all_transactions().await;
 
         // Filter transactions by given account name
         all.into_iter()
             .rev()
             .filter(|t| {
-                !t.tdescription.contains("opening balances")
-                    && !t.tdescription.contains("closing balances")
-                    && t.tpostings
-                        .iter()
-                        .any(|p| account_names.contains(&p.paccount.as_str()))
+                t.tpostings
+                    .iter()
+                    .any(|p| account_names.contains(&p.paccount.as_str()))
             })
             .collect()
     }
@@ -213,8 +219,17 @@ impl Hledger {
         self.read_process.get_commodities().await
     }
 
-    pub async fn fetch_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
-        self.read_process.fetch_transactions(account_names).await
+    pub async fn fetch_all_transactions(&self) -> Vec<HledgerTransaction> {
+        self.read_process.fetch_all_transactions().await
+    }
+
+    pub async fn fetch_account_transactions(
+        &self,
+        account_names: &[&str],
+    ) -> Vec<HledgerTransaction> {
+        self.read_process
+            .fetch_account_transactions(account_names)
+            .await
     }
 
     // TODO: proper errors
@@ -272,12 +287,22 @@ impl Hledger {
         get_total_from_csv(stdout)
     }
 
-    pub async fn get_income_statement(&self) -> AlignedData {
+    pub async fn get_income_statement(&self) -> IncomeStatementResponse {
         let command = "is";
         let args = &["--monthly", "--depth", "1"];
         let stdout = self.hledger_csv_command(command, args).await;
 
-        get_income_statement_from_csv(stdout)
+        let all = self.fetch_all_transactions().await;
+        let is = get_income_statement_from_csv(stdout);
+
+        let top_expenses = get_top_transactions("Expenses", &all, &is.dates);
+        let top_revenues = get_top_transactions("Income", &all, &is.dates);
+
+        IncomeStatementResponse {
+            data: is.into(),
+            top_revenues,
+            top_expenses,
+        }
     }
 
     async fn hledger_csv_command(&self, command: &str, args: &[&str]) -> impl std::io::Read {
@@ -315,7 +340,32 @@ fn get_total_from_csv(reader: impl std::io::Read) -> Option<Decimal> {
     None
 }
 
-fn get_income_statement_from_csv(reader: impl std::io::Read) -> AlignedData {
+#[derive(Debug)]
+struct IncomeStatement {
+    dates: Vec<NaiveDate>,
+    revenues: Vec<Decimal>,
+    expenses: Vec<Decimal>,
+}
+
+impl From<IncomeStatement> for AlignedData {
+    fn from(is: IncomeStatement) -> Self {
+        let decimal_to_number =
+            |v: &Decimal| serde_json::Number::from_f64(v.to_f64().unwrap()).unwrap();
+        AlignedData {
+            x_values: is
+                .dates
+                .iter()
+                .map(|d| d.and_hms(0, 0, 0).timestamp().into())
+                .collect(),
+            y_values: vec![
+                is.revenues.iter().map(decimal_to_number).collect(),
+                is.expenses.iter().map(decimal_to_number).collect(),
+            ],
+        }
+    }
+}
+
+fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement {
     enum ParseState {
         Description,
         Months,
@@ -396,17 +446,10 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> AlignedData {
             }
         }
     }
-    let decimal_to_number =
-        |v: &Decimal| serde_json::Number::from_f64(v.to_f64().unwrap()).unwrap();
-    AlignedData {
-        x_values: dates
-            .iter()
-            .map(|d| d.and_hms(0, 0, 0).timestamp().into())
-            .collect(),
-        y_values: vec![
-            revenues.iter().map(decimal_to_number).collect(),
-            expenses.iter().map(decimal_to_number).collect(),
-        ],
+    IncomeStatement {
+        dates,
+        revenues,
+        expenses,
     }
 }
 
@@ -430,9 +473,37 @@ fn currency_amount_to_decimal(amount: &str) -> Option<Decimal> {
     None
 }
 
+fn get_top_transactions(
+    account: &str,
+    transactions: &[HledgerTransaction],
+    dates: &[NaiveDate],
+) -> Vec<Vec<HledgerTransaction>> {
+    let mut top_transactions: Vec<Vec<HledgerTransaction>> = vec![vec![]; dates.len()];
+    for t in transactions {
+        if !t.has_account(account) {
+            continue;
+        }
+        let date = t.get_date(Some(account));
+        if date < dates[0] {
+            continue;
+        }
+        let month = dates
+            .iter()
+            .position(|d| d.year() == date.year() && d.month() == date.month())
+            .unwrap();
+        top_transactions[month].push(t.clone());
+    }
+
+    for top in &mut top_transactions {
+        top.sort_by_key(|t| Reverse(t.get_amount(None, account).unwrap().abs()));
+        top.truncate(3);
+    }
+    top_transactions
+}
+
 #[cfg(test)]
 mod tests {
-    use chrono::{NaiveDate, NaiveDateTime};
+    use chrono::NaiveDate;
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::{
@@ -512,37 +583,16 @@ mod tests {
 "#;
         let is = get_income_statement_from_csv(data.as_bytes());
         println!("{:#?}", is);
-        fn to_date(n: &serde_json::Number) -> NaiveDate {
-            NaiveDateTime::from_timestamp(n.as_i64().unwrap(), 0).date()
-        }
+        assert_eq!(is.dates.first().unwrap(), &NaiveDate::from_ymd(2016, 5, 31));
+        assert_eq!(is.dates.last().unwrap(), &NaiveDate::from_ymd(2021, 4, 30));
+        assert_eq!(is.revenues[0], Decimal::from_f64(25.91).unwrap());
+        assert_eq!(is.revenues[1], Decimal::from_f64(305.37).unwrap());
+        assert_eq!(is.expenses[0], Decimal::from_f64(0.).unwrap());
+        assert_eq!(is.expenses[1], Decimal::from_f64(498.69).unwrap());
+        assert_eq!(is.revenues.last().unwrap(), &Decimal::from_f64(0.).unwrap());
         assert_eq!(
-            to_date(is.x_values.first().unwrap()),
-            NaiveDate::from_ymd(2016, 5, 31)
-        );
-        assert_eq!(
-            to_date(is.x_values.last().unwrap()),
-            NaiveDate::from_ymd(2021, 4, 30)
-        );
-        assert_eq!(
-            is.y_values[0][0],
-            serde_json::Number::from_f64(25.91).unwrap()
-        );
-        assert_eq!(
-            is.y_values[0][1],
-            serde_json::Number::from_f64(305.37).unwrap()
-        );
-        assert_eq!(is.y_values[1][0], serde_json::Number::from_f64(0.).unwrap());
-        assert_eq!(
-            is.y_values[1][1],
-            serde_json::Number::from_f64(498.69).unwrap()
-        );
-        assert_eq!(
-            is.y_values[0].last().unwrap(),
-            &serde_json::Number::from_f64(0.).unwrap()
-        );
-        assert_eq!(
-            is.y_values[1].last().unwrap(),
-            &serde_json::Number::from_f64(2688.94).unwrap()
+            is.expenses.last().unwrap(),
+            &Decimal::from_f64(2688.94).unwrap()
         );
     }
 }
