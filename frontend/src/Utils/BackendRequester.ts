@@ -32,7 +32,16 @@ export const getAccounts = (): Promise<string[]> => get("accounts");
 
 export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.id}`);
 
-export const getIncomeStatement = (): Promise<IncomeStatementResponse> => get("reports/income_statement");
+export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatementResponse> => {
+  const query: Record<string, string> = {};
+  if (from) {
+    query.from = from.toISOString().split("T")[0];
+  }
+  if (to) {
+    query.to = to.toISOString().split("T")[0];
+  }
+  return get("reports/income_statement", query);
+};
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;

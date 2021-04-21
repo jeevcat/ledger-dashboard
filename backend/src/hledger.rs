@@ -287,10 +287,26 @@ impl Hledger {
         get_total_from_csv(stdout)
     }
 
-    pub async fn get_income_statement(&self) -> IncomeStatementResponse {
+    pub async fn get_income_statement(
+        &self,
+        from: Option<NaiveDate>,
+        to: Option<NaiveDate>,
+    ) -> IncomeStatementResponse {
         let command = "is";
-        let args = &["--monthly", "--depth", "1"];
-        let stdout = self.hledger_csv_command(command, args).await;
+        let mut args = vec!["--monthly", "--depth", "1"];
+        let s;
+        if let Some(from) = from {
+            args.push("-b");
+            s = from.format(DATE_FMT).to_string();
+            args.push(&s);
+        }
+        let s;
+        if let Some(to) = to {
+            args.push("-e");
+            s = to.format(DATE_FMT).to_string();
+            args.push(&s);
+        }
+        let stdout = self.hledger_csv_command(command, &args).await;
 
         let all = self.fetch_all_transactions().await;
         let is = get_income_statement_from_csv(stdout);
