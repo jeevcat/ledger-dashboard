@@ -13,6 +13,7 @@ use std::{
 };
 
 use chrono::{Datelike, NaiveDate};
+use futures::future::{BoxFuture, FutureExt};
 use log::{error, info, warn};
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 
@@ -41,35 +42,57 @@ impl HledgerProcess {
     fn new(journal_file: &Path, port: i32) -> Self {
         let h = Self {
             journal_file: journal_file.to_path_buf(),
+            process: Mutex::new(None),
             ready: AtomicBool::new(false),
             port,
-            process: Mutex::new(None),
         };
         h.spawn_process();
         h
     }
 
+    // Need some ugly syntax to support recursive async
+    // https://rust-lang.github.io/async-book/07_workarounds/04_recursion.html
+    fn http_get_request<'a>(
+        &'a self,
+        http_client: &'a reqwest::Client,
+        path: &'a str,
+    ) -> BoxFuture<'a, reqwest::Response> {
+        async move {
+            let request_url = format!("{}:{}/{}", BASE_URL, self.port, path);
+            match http_client.get(request_url.as_str()).send().await {
+                std::result::Result::Ok(r) => r,
+                std::result::Result::Err(e) => {
+                    if e.is_timeout() {
+                        error!("Restarting due to timeout");
+                        self.restart_hledger();
+                        self.http_get_request(http_client, path).await
+                    } else {
+                        panic!("Error while performing hledger-api request: {:#?}", e);
+                    }
+                }
+            }
+        }
+        .boxed()
+    }
+
     /// Leave the json as a string as we just pass it back to our own API
-    async fn get_accounts(&self) -> String {
+    async fn get_accounts(&self, http_client: &reqwest::Client) -> String {
         self.wait_for_hledger_process();
 
-        let request_url = format!("{}:{}/accountnames", BASE_URL, self.port);
-        reqwest::get(request_url.as_str())
+        self.http_get_request(http_client, "accountnames")
             .await
-            .unwrap()
             .text()
             .await
             .unwrap()
     }
 
-    async fn get_commodities(&self) -> Vec<String> {
+    async fn get_commodities(&self, http_client: &reqwest::Client) -> Vec<String> {
         self.wait_for_hledger_process();
 
-        let request_url = format!("{}:{}/commodities", BASE_URL, self.port);
-        let commodities = reqwest::get(request_url.as_str())
+        let commodities: Vec<String> = self
+            .http_get_request(http_client, "commodities")
             .await
-            .unwrap()
-            .json::<Vec<String>>()
+            .json()
             .await
             .unwrap();
 
@@ -79,17 +102,26 @@ impl HledgerProcess {
             .collect()
     }
 
-    async fn fetch_all_transactions(&self) -> Vec<HledgerTransaction> {
+    async fn fetch_all_transactions(
+        &self,
+        http_client: &reqwest::Client,
+    ) -> Vec<HledgerTransaction> {
         self.wait_for_hledger_process();
 
         // Fetch transactions from hledger-web API
-        let request_url = format!("{}:{}/transactions", BASE_URL, self.port);
-        let response = reqwest::get(request_url.as_str()).await.unwrap();
-        response.json().await.unwrap()
+        self.http_get_request(http_client, "transactions")
+            .await
+            .json()
+            .await
+            .unwrap()
     }
 
-    async fn fetch_account_transactions(&self, account_names: &[&str]) -> Vec<HledgerTransaction> {
-        let all: Vec<HledgerTransaction> = self.fetch_all_transactions().await;
+    async fn fetch_account_transactions(
+        &self,
+        http_client: &reqwest::Client,
+        account_names: &[&str],
+    ) -> Vec<HledgerTransaction> {
+        let all: Vec<HledgerTransaction> = self.fetch_all_transactions(http_client).await;
 
         // Filter transactions by given account name
         all.into_iter()
@@ -202,7 +234,10 @@ pub struct Hledger {
 impl Hledger {
     pub fn new() -> Self {
         Self {
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder()
+                .timeout(time::Duration::from_secs(10))
+                .build()
+                .unwrap(),
             read_process: HledgerProcess::new(&get_default_ledger_file(), READ_PORT),
             write_processes: get_ledger_year_files()
                 .into_iter()
@@ -212,15 +247,17 @@ impl Hledger {
     }
 
     pub async fn get_accounts(&self) -> String {
-        self.read_process.get_accounts().await
+        self.read_process.get_accounts(&self.http_client).await
     }
 
     pub async fn get_commodities(&self) -> Vec<String> {
-        self.read_process.get_commodities().await
+        self.read_process.get_commodities(&self.http_client).await
     }
 
     pub async fn fetch_all_transactions(&self) -> Vec<HledgerTransaction> {
-        self.read_process.fetch_all_transactions().await
+        self.read_process
+            .fetch_all_transactions(&self.http_client)
+            .await
     }
 
     pub async fn fetch_account_transactions(
@@ -228,7 +265,7 @@ impl Hledger {
         account_names: &[&str],
     ) -> Vec<HledgerTransaction> {
         self.read_process
-            .fetch_account_transactions(account_names)
+            .fetch_account_transactions(&self.http_client, account_names)
             .await
     }
 
