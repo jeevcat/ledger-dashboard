@@ -20,13 +20,6 @@ impl TokenData {
                 expires_in.num_minutes(),
                 expires_in.num_seconds() - expires_in.num_minutes() * 60
             );
-            // Expire early
-            let expires_in: Duration = expires_in / 2;
-            info!(
-                "Prematurely expire the token in {}m{}s",
-                expires_in.num_minutes(),
-                expires_in.num_seconds() - expires_in.num_minutes() * 60
-            );
             self.expiration_time = Some(Utc::now().naive_utc() + expires_in);
         }
     }

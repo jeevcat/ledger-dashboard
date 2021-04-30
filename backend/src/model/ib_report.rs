@@ -120,7 +120,7 @@ impl RealTransaction for SimpleTransaction {
 
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
-enum IbTransaction {
+pub enum IbTransaction {
     SimpleTransaction(SimpleTransaction),
     Trade(Trade),
 }

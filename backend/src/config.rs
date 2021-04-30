@@ -28,6 +28,14 @@ pub fn alpha_vantage_key() -> Option<String> {
     env::var("ALPHA_VANTAGE_KEY").ok()
 }
 
+pub fn ib_flex_token() -> Option<String> {
+    env::var("IB_FLEX_TOKEN").ok()
+}
+
+pub fn ib_flex_query_id() -> Option<String> {
+    env::var("IB_FLEX_QUERY_ID").ok()
+}
+
 pub fn journal_path() -> Option<String> {
     env::var("JOURNAL_PATH").ok()
 }
