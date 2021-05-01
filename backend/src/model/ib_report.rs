@@ -25,7 +25,7 @@ struct Field {
 
 // https://guides.interactivebrokers.com/rg/reportguide/trades_default.htm
 #[derive(Debug, Hash, Serialize, Deserialize)]
-struct Trade {
+pub struct Trade {
     #[serde(rename = "Currency")]
     currency: String,
     // The symbol of the instrument you traded.
@@ -85,7 +85,7 @@ impl RealTransaction for Trade {
 }
 
 #[derive(Debug, Serialize, Deserialize, Hash)]
-struct SimpleTransaction {
+pub struct SimpleTransaction {
     #[serde(rename = "Currency")]
     currency: String,
     #[serde(rename(deserialize = "Date", deserialize = "Settle Date", serialize = "Date"))]

@@ -1,4 +1,4 @@
-use std::{time::Duration};
+use std::time::Duration;
 
 use actix::clock::delay_for;
 use actix_web::web::Buf;
@@ -22,13 +22,14 @@ pub struct Ib;
 enum FlexStatementStatus {
     Success,
     Warn,
+    Fail,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct FlexStatementRequestResponse {
     status: FlexStatementStatus,
-    reference_code: String,
+    reference_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,8 +48,10 @@ struct FlexStatements {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct FlexStatement {
-    trades: Trades,
-    cash_transactions: CashTransactions,
+    trades: Option<Trades>,
+    cash_transactions: Option<CashTransactions>,
+    open_positions: Option<OpenPositions>,
+    cash_report: Option<CashReports>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,6 +64,18 @@ struct Trades {
 struct CashTransactions {
     #[serde(rename = "CashTransaction", default)]
     items: Vec<CashTransaction>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenPositions {
+    #[serde(rename = "OpenPosition", default)]
+    items: Vec<OpenPosition>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CashReports {
+    #[serde(rename = "CashReportCurrency", default)]
+    items: Vec<CashReport>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,6 +104,24 @@ struct CashTransaction {
     amount: Decimal,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenPosition {
+    currency: String,
+    symbol: String,
+    description: String,
+    position: u32,
+    mark_price: Decimal,
+    position_value: Decimal,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CashReport {
+    currency: String,
+    ending_cash: Decimal,
+}
+
 impl Ib {
     pub fn read_report() -> IbReport {
         let filename = "ib.csv";
@@ -113,18 +146,44 @@ impl Ib {
         report
     }
 
-    pub async fn get_statement() -> Decimal {
+    pub async fn get_balance() -> Decimal {
         let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-        let query_id = &config::ib_flex_query_id().expect("Need to set IB_FLEX_QUERY_ID");
-        let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
-        let text = reqwest::get(&url).await.unwrap().bytes().await.unwrap();
-        let response: FlexStatementRequestResponse = from_reader(text.bytes()).unwrap();
-        println!("{:#?}", response);
+        let query_id =
+            &config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
+        let balance = Ib::fetch_flex_statement(token, query_id).await;
+        println!("{:#?}", balance);
+        let position_sum = balance
+            .open_positions
+            .unwrap()
+            .items
+            .into_iter()
+            .fold(Decimal::ZERO, |acc, p| acc + p.position_value);
+        let cash_sum = balance
+            .cash_report
+            .unwrap()
+            .items
+            .into_iter()
+            .find(|c| c.currency == "BASE_SUMMARY")
+            .unwrap()
+            .ending_cash;
+        position_sum + cash_sum
+    }
+
+    pub async fn get_transactions() -> Vec<IbTransaction> {
+        let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
+        let query_id = &config::ib_flex_transactions_query_id()
+            .expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
+        let _t = Ib::fetch_flex_statement(token, query_id).await;
+        vec![]
+    }
+
+    async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
+        let reference_code = Ib::request_flex_statement(token, query_id).await;
 
         let mut retries: i32 = 3;
         let mut wait: u64 = 1;
-        let res = loop {
-            let statement = Ib::get_flex_statement(&response.reference_code, token).await;
+        loop {
+            let statement = Ib::get_flex_statement(&reference_code, token).await;
             match statement.status {
                 Some(status) => {
                     if let FlexStatementStatus::Warn = status {
@@ -133,14 +192,44 @@ impl Ib {
                             retries -= 1;
                             delay_for(Duration::from_secs(wait)).await;
                             wait *= 2;
+                        } else {
+                            panic!("Still couldn't get flex statement after 3 retries");
                         }
                     }
                 }
-                _ => break statement.flex_statements,
+                _ => {
+                    return statement
+                        .flex_statements
+                        .unwrap()
+                        .items
+                        .into_iter()
+                        .next()
+                        .unwrap()
+                }
             }
-        };
-        println!("{:#?}", res);
-        Decimal::new(0, 0)
+        }
+    }
+
+    /// Returns statement reference code
+    async fn request_flex_statement(token: &str, query_id: &str) -> String {
+        let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
+        let mut retries: i32 = 3;
+        let mut wait: u64 = 1;
+        loop {
+            let text = reqwest::get(&url).await.unwrap().bytes().await.unwrap();
+            let response: FlexStatementRequestResponse = from_reader(text.bytes()).unwrap();
+            match response.status {
+                FlexStatementStatus::Success => return response.reference_code.unwrap(),
+                _ => {
+                    if retries > 0 {
+                        info!("Statement not ready yet. Waiting {} sec...", wait);
+                        retries -= 1;
+                        delay_for(Duration::from_secs(wait)).await;
+                        wait *= 2;
+                    }
+                }
+            }
+        }
     }
 
     async fn get_flex_statement(reference_code: &str, token: &str) -> FlexStatementGetResponse {
@@ -155,15 +244,15 @@ impl ImportAccount for Ib {
     type RealTransactionType = IbTransaction;
 
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
-        todo!()
+        Ib::get_transactions().await
     }
 
     async fn get_balance(&self) -> Decimal {
-        todo!()
+        Ib::get_balance().await
     }
 
     fn get_hledger_account(&self) -> &str {
-        todo!()
+        "Assets:Investments:IB"
     }
 }
 
@@ -188,9 +277,8 @@ pub fn deserialize_record<'a, T>(
 mod tests {
     use serde_xml_rs::from_reader;
 
-    use crate::ib::FlexStatementRequestResponse;
-
     use super::Ib;
+    use crate::ib::FlexStatementRequestResponse;
 
     #[test]
     #[ignore]
@@ -208,12 +296,19 @@ mod tests {
 </FlexStatementResponse>
 "#;
         let response: FlexStatementRequestResponse = from_reader(xml.as_bytes()).unwrap();
-        assert_eq!(response.reference_code, "1234567890");
+        assert_eq!(response.reference_code.unwrap(), "1234567890");
     }
 
     #[actix_rt::test]
     async fn get_balance() {
         dotenv::dotenv().ok();
-        Ib::get_statement().await;
+        let bal = Ib::get_balance().await;
+        println!("{:#?}", bal);
+    }
+
+    #[actix_rt::test]
+    async fn get_transactions() {
+        dotenv::dotenv().ok();
+        Ib::get_transactions().await;
     }
 }

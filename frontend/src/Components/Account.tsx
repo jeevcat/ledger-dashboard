@@ -8,9 +8,10 @@ import { asEuro } from "../Utils/TextUtils";
 
 interface Props {
   account: ImportAccount;
+  onUpdate(accountId: string, balance: Balance): void;
 }
 
-export const AccountComponent: React.FC<Props> = ({ account }) => {
+export const AccountComponent: React.FC<Props> = ({ account, onUpdate }) => {
   const [balance, setBalance] = useState<Balance>();
   const [failure, setFailure] = useState<boolean>(false);
   useEffect(() => {
@@ -18,12 +19,13 @@ export const AccountComponent: React.FC<Props> = ({ account }) => {
       .then((balance) => {
         setBalance(balance);
         setFailure(false);
+        onUpdate(account.id, balance);
       })
       .catch((e) => {
         console.error(e);
         setFailure(true);
       });
-  }, [account]);
+  }, [account, onUpdate]);
 
   const cells = () => {
     if (failure) {

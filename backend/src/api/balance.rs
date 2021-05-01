@@ -3,14 +3,15 @@ use std::sync::Arc;
 use actix_web::{dev::HttpServiceFactory, web, HttpResponse};
 
 use crate::{
-    hledger::Hledger, import_account::ImportAccount, model::balance_response::BalanceResponse,
-    n26::N26, saltedge::SaltEdge,
+    hledger::Hledger, ib::Ib, import_account::ImportAccount,
+    model::balance_response::BalanceResponse, n26::N26, saltedge::SaltEdge,
 };
 
 pub fn balance_routes() -> impl HttpServiceFactory {
     web::scope("/balance")
         .route("/n26", web::get().to(get_account_balance::<N26>))
         .route("/ing", web::get().to(get_account_balance::<SaltEdge>))
+        .route("/ib", web::get().to(get_account_balance::<Ib>))
 }
 
 async fn get_account_balance<T>(

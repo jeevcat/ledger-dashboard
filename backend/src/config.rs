@@ -32,8 +32,12 @@ pub fn ib_flex_token() -> Option<String> {
     env::var("IB_FLEX_TOKEN").ok()
 }
 
-pub fn ib_flex_query_id() -> Option<String> {
-    env::var("IB_FLEX_QUERY_ID").ok()
+pub fn ib_flex_balance_query_id() -> Option<String> {
+    env::var("IB_FLEX_BALANCE_QUERY_ID").ok()
+}
+
+pub fn ib_flex_transactions_query_id() -> Option<String> {
+    env::var("IB_FLEX_TRANSACTIONS_QUERY_ID").ok()
 }
 
 pub fn journal_path() -> Option<String> {
