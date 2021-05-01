@@ -100,6 +100,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
           )}
           {t.hledger_transaction && (
             <Table.HeaderCell
+              collapsing
               sorted={sortedColumn === "generated" ? sortDirection : undefined}
               onClick={() => handleSort("generated")}
             >

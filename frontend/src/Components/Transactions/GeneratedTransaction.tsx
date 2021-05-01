@@ -1,18 +1,6 @@
 import React from "react";
-import { Breadcrumb, Card, Label, Popup, Table } from "semantic-ui-react";
-import {
-  getAmount,
-  getDate,
-  getId,
-  getMatchingAccount,
-  getUnmatchingAccounts,
-  HledgerTransaction,
-} from "../../Models/HledgerTransaction";
-
-const formatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "EUR",
-});
+import { Breadcrumb, Header, Popup, Table } from "semantic-ui-react";
+import { getDate, getId, getPostingAmount, HledgerTransaction, Posting } from "../../Models/HledgerTransaction";
 
 interface Props {
   transaction: HledgerTransaction;
@@ -22,51 +10,54 @@ interface Props {
 }
 
 const GeneratedTransaction: React.FC<Props> = ({ transaction, account, negative }) => {
-  const matching = getMatchingAccount(transaction, account);
-  const unmatching = getUnmatchingAccounts(transaction, account);
   const accountSections = (account?: string) =>
     account?.split(":").map((v) => {
       return { key: v, content: v };
     });
 
-  const posting = (account?: string) => {
-    if (!account) return <div />;
-
-    const amt = getAmount(transaction, account);
-    const amount = negative ? -amt : amt;
+  const posting = (posting: Posting, key: number) => {
+    const amount = getPostingAmount(posting, negative);
+    console.log(posting);
 
     return (
-      <Table.Row>
-        <Table.Cell>
-          <Breadcrumb icon="right angle" sections={accountSections(account)} />
-        </Table.Cell>
-        <Table.Cell textAlign="right" positive={amount > 0} negative={amount < 0}>
-          {formatter.format(amount)}
-        </Table.Cell>
-      </Table.Row>
+      <Popup
+        key={key.toString()}
+        disabled={!posting.pcomment}
+        position="left center"
+        trigger={
+          <Table.Row>
+            <Table.Cell>
+              <Breadcrumb icon="right angle" sections={accountSections(posting.paccount)} />
+            </Table.Cell>
+            <Table.Cell textAlign="right" positive={amount.positive} negative={!amount.positive}>
+              {amount.formatted}
+            </Table.Cell>
+          </Table.Row>
+        }
+      >
+        {posting.pcomment}
+      </Popup>
     );
   };
 
   return (
     <Popup
+      position="top right"
       inverted
       size="mini"
       trigger={
-        <Card fluid>
-          <Card.Content>
-            <Card.Header>{transaction.tdescription}</Card.Header>
-            <Card.Description>
-              <Table>
-                {posting(matching)}
-                {unmatching.map(posting)}
-              </Table>
-            </Card.Description>
-            <Label attached="top right">{getDate(transaction)}</Label>
-          </Card.Content>
-        </Card>
+        <Table singleLine>
+          <Table.Header>
+            <Table.HeaderCell colSpan={2}>{transaction.tdescription}</Table.HeaderCell>
+          </Table.Header>
+          {transaction.tpostings?.map(posting)}
+        </Table>
       }
     >
-      <Popup.Content>{getId(transaction)} </Popup.Content>
+      <Popup.Content>
+        <Header>{getDate(transaction)}</Header>
+        {getId(transaction)}{" "}
+      </Popup.Content>
     </Popup>
   );
 };

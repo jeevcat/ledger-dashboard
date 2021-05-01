@@ -39,9 +39,17 @@ impl From<&Quantity> for Decimal {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Precision {
-    tag: String,
-    contents: u32,
+#[serde(tag = "tag", content = "contents")]
+enum Price {
+    UnitPrice(Amount),
+    TotalPrice(Amount),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "tag", content = "contents")]
+enum Precision {
+    Precision(u32),
+    NaturalPrecision,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +61,7 @@ struct AmountStyle {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Amount {
+    aprice: Option<Box<Price>>,
     acommodity: String,
     aquantity: Quantity,
     aismultiplier: bool,
@@ -82,11 +91,9 @@ impl Posting {
                 astyle: AmountStyle {
                     ascommodityside: String::from("R"),
                     ascommodityspaced: true,
-                    asprecision: Precision {
-                        tag: "Precision".to_string(),
-                        contents: 2,
-                    },
+                    asprecision: Precision::Precision(2),
                 },
+                aprice: None,
             }],
             pstatus: String::from("Unmarked"),
             pcomment: String::new(),

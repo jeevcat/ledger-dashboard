@@ -1,4 +1,4 @@
-import { asDate } from "../Utils/TextUtils";
+import { asDate, asEuro } from "../Utils/TextUtils";
 
 export interface Amount {
   acommodity: string;
@@ -7,17 +7,44 @@ export interface Amount {
     decimalPlaces: number;
     decimalMantissa: number;
   };
+  aprice?: {
+    tag: string;
+    contents: Amount;
+  };
 }
 
 export interface Posting {
   paccount: string;
   pamount: Amount[];
   ptags: string[][];
+  pcomment: string;
 }
 
-export const getPostingAmount = (p: Posting): number => {
-  // TODO: different currencies?
-  return p.pamount[0].aquantity.floatingPoint;
+export interface FormattedAmount {
+  formatted: string;
+  positive: boolean;
+}
+
+export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmount => {
+  /* TODO: different currencies?*/
+  if (p.pamount[0].aprice) {
+    const value = p.pamount[0].aprice.contents.aquantity.floatingPoint;
+    const sym = p.pamount[0].acommodity;
+    const sym_amount = p.pamount[0].aquantity.floatingPoint;
+    const cost = asEuro(negative ? -value : value);
+    const separator = p.pamount[0].aprice.tag === "TotalPrice" ? "@@" : "@";
+
+    return {
+      formatted: `${sym_amount} ${sym} ${separator} ${cost}`,
+      positive: value > 0,
+    };
+  }
+  const value = p.pamount[0].aquantity.floatingPoint;
+  const cost = asEuro(negative ? -value : value);
+  return {
+    formatted: cost,
+    positive: value > 0,
+  };
 };
 
 export interface HledgerTransaction {
@@ -27,13 +54,12 @@ export interface HledgerTransaction {
   tpostings?: Posting[];
 }
 
-export const getAmount = (t: HledgerTransaction, account: string): number => {
+export const getAmount = (t: HledgerTransaction, account: string): FormattedAmount | undefined => {
   for (const p of t.tpostings ?? []) {
     if (p.paccount.toLowerCase().includes(account.toLowerCase())) {
       return getPostingAmount(p);
     }
   }
-  return 0;
 };
 
 export const getId = (t: HledgerTransaction): string | undefined => {
@@ -52,6 +78,8 @@ export const getId = (t: HledgerTransaction): string | undefined => {
 };
 
 export const getDate = (t: HledgerTransaction): string => asDate(t.tdate);
+
+export const getAccounts = (t: HledgerTransaction): string[] => (t.tpostings ?? []).map((p: Posting) => p.paccount);
 
 export const getMatchingAccount = (t: HledgerTransaction, importAccountId: string): string | undefined => {
   return t.tpostings?.find((p: Posting) => p.paccount.toLowerCase().includes(importAccountId.toLowerCase()))?.paccount;
