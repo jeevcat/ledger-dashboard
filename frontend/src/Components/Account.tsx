@@ -67,7 +67,7 @@ export const AccountComponent: React.FC<Props> = ({ account, onUpdate }) => {
     <Table.Row>
       <Table.Cell>{account.humanName}</Table.Cell>
       {cells()}
-      <Table.Cell>
+      <Table.Cell textAlign="center">
         <Link to={`/import/${account.id}`}>
           <Button icon="sign-in" />
         </Link>

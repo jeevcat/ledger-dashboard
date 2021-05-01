@@ -13,8 +13,9 @@ use crate::{
     hledger::Hledger,
     import_account::ImportAccount,
     model::{
-        hledger_transaction::HledgerTransaction, real_transaction::RealTransaction, rule::Rule,
-        transaction_request::TransactionRequest, transaction_response::TransactionResponse,
+        hledger_transaction::HledgerTransaction, real_transaction::IdentifiableTransaction,
+        rule::Rule, transaction_request::TransactionRequest,
+        transaction_response::TransactionResponse,
     },
     templater::Templater,
     transactions,

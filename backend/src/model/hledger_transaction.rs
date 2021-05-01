@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 
-use super::real_transaction::RealTransaction;
+use super::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -146,11 +146,10 @@ impl HledgerTransaction {
         }
     }
 
-    pub fn new_with_postings(
-        real_transaction: &impl RealTransaction,
-        description: &str,
-        account: &str,
-    ) -> Self {
+    pub fn new_with_postings<T>(real_transaction: &T, description: &str, account: &str) -> Self
+    where
+        T: IdentifiableTransaction + DefaultPostingTransaction,
+    {
         Self::new(
             &description,
             real_transaction.get_date(),
@@ -171,6 +170,11 @@ impl HledgerTransaction {
     /// Add posting
     pub fn posting(mut self, posting: Posting) -> Self {
         self.tpostings.push(posting);
+        self
+    }
+
+    pub fn postings(mut self, posting: &mut Vec<Posting>) -> Self {
+        self.tpostings.append(posting);
         self
     }
 

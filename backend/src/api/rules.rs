@@ -19,6 +19,11 @@ pub fn rules_routes() -> impl HttpServiceFactory {
                 .route(web::get().to(rules_get::<SaltEdge>))
                 .route(web::post().to(rules_add::<SaltEdge>)),
         )
+        .service(
+            web::resource("/ib")
+                .route(web::get().to(rules_get::<SaltEdge>))
+                .route(web::post().to(rules_add::<SaltEdge>)),
+        )
         // return json parsing errors
         .app_data(web::JsonConfig::default().error_handler(|err, _req| {
             let reponse = HttpResponse::BadRequest().json(err.to_string());
@@ -28,17 +33,9 @@ pub fn rules_routes() -> impl HttpServiceFactory {
 }
 
 pub fn rule_routes() -> impl HttpServiceFactory {
-    web::scope("/rule")
-        .service(
-            web::resource("/n26")
-                .route(web::get().to(get_rule))
-                .route(web::delete().to(delete_rule)),
-        )
-        .service(
-            web::resource("/ing")
-                .route(web::get().to(get_rule))
-                .route(web::delete().to(delete_rule)),
-        )
+    web::resource("/rule")
+        .route(web::get().to(get_rule))
+        .route(web::delete().to(delete_rule))
 }
 
 async fn rules_get<T>(

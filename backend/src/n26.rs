@@ -18,7 +18,7 @@ use crate::{
     import_account::ImportAccount,
     model::{
         n26_accounts::N26Accounts, n26_transaction::N26Transaction,
-        real_transaction::RealTransaction, token_data::TokenData,
+        real_transaction::IdentifiableTransaction, token_data::TokenData,
     },
 };
 

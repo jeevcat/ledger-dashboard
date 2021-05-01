@@ -26,6 +26,6 @@ export const ImportAccounts: ImportAccount[] = [
     humanName: "Interactive Brokers",
     id: "ib",
     icon: "https://play-lh.googleusercontent.com/t6vYo11fzpC32nXXXVS1_Pg-bbswrF1X2f0rdHv_X2DLAJkqdWb-3FfCIUzA6MV7CTM",
-    defaultColumns: ["Date", "Description", "Currency", "Amount"],
+    defaultColumns: ["dateTime", "description", "currency", "amount"],
   },
 ];

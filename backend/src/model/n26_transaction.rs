@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::real_transaction::RealTransaction;
+use super::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,7 @@ pub struct N26Transaction {
     extra: Map<String, Value>,
 }
 
-impl RealTransaction for N26Transaction {
+impl IdentifiableTransaction for N26Transaction {
     fn get_id(&self) -> Cow<str> {
         Cow::Borrowed(&self.id)
     }
@@ -29,7 +29,9 @@ impl RealTransaction for N26Transaction {
         let s: i64 = self.visible_ts / 1000i64;
         NaiveDateTime::from_timestamp(s, 0).date()
     }
+}
 
+impl DefaultPostingTransaction for N26Transaction {
     fn get_amount(&self) -> Decimal {
         self.amount
     }

@@ -71,7 +71,7 @@ where
             if let Some(id) = id {
                 real = real_transactions.get(id);
                 if let Some(real) = real {
-                    *r_sum -= real.get_amount();
+                    *r_sum -= real.get_amount(import_hledger_account);
                 }
             }
             Some(((h, real), (*h_sum, *r_sum)))
@@ -148,7 +148,7 @@ fn get_errors(
         let amount: Decimal = hledger_transaction
             .get_amount(Some(&r.get_id()), import_hledger_account)
             .unwrap();
-        if amount != r.get_amount() {
+        if amount != r.get_amount(import_hledger_account) {
             errors.push("Amounts don't match".to_string());
         }
         let h_date = hledger_transaction.get_date(Some(import_hledger_account));
@@ -175,7 +175,7 @@ mod tests {
     use super::get_generated_transactions;
     use crate::model::{
         hledger_transaction::HledgerTransaction, n26_transaction::N26Transaction,
-        real_transaction::RealTransaction, rule::Rule,
+        real_transaction::IdentifiableTransaction, rule::Rule,
     };
 
     lazy_static! {

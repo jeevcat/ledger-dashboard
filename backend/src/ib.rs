@@ -3,18 +3,19 @@ use std::time::Duration;
 use actix::clock::delay_for;
 use actix_web::web::Buf;
 use async_trait::async_trait;
-use csv::StringRecord;
-use log::{error, info};
+use chrono::NaiveDate;
+use log::info;
 use rust_decimal::Decimal;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_reader;
 
 use crate::{
     config,
-    file_utils::get_database_file,
     import_account::ImportAccount,
-    model::ib_report::{IbReport, IbTransaction},
+    model::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction},
 };
+
+const DATE_FMT: &str = "%Y%m%d;%H%M%S";
 
 pub struct Ib;
 
@@ -78,9 +79,9 @@ struct CashReports {
     items: Vec<CashReport>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Trade {
+pub struct Trade {
     currency: String,
     symbol: String,
     description: String,
@@ -93,9 +94,9 @@ struct Trade {
     ib_commission: Decimal,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CashTransaction {
+pub struct CashTransaction {
     currency: String,
     description: String,
     #[serde(rename = "transactionID")]
@@ -122,30 +123,43 @@ struct CashReport {
     ending_cash: Decimal,
 }
 
-impl Ib {
-    pub fn read_report() -> IbReport {
-        let filename = "ib.csv";
-        let file_path = get_database_file(filename).unwrap();
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .flexible(true)
-            .from_path(file_path)
-            .unwrap();
-        let mut report = IbReport::default();
-        let mut record = StringRecord::new();
-        while rdr.read_record(&mut record).unwrap_or_default() {
-            match &record[1] {
-                "Header" => rdr.set_headers(record.clone()),
-                "Data" => {
-                    let headers = rdr.headers().unwrap();
-                    report.deserialize_to_report(&record, headers);
-                }
-                _ => (),
-            }
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum IbTransaction {
+    Cash(CashTransaction),
+    Trade(Trade),
+}
+
+impl IdentifiableTransaction for IbTransaction {
+    fn get_id(&self) -> std::borrow::Cow<str> {
+        match self {
+            IbTransaction::Cash(c) => c.transaction_id.as_str().into(),
+            IbTransaction::Trade(t) => t.transaction_id.as_str().into(),
         }
-        report
     }
 
+    fn get_date(&self) -> chrono::NaiveDate {
+        match self {
+            IbTransaction::Cash(c) => ib_date(&c.date_time),
+            IbTransaction::Trade(t) => ib_date(&t.date_time),
+        }
+    }
+}
+impl DefaultPostingTransaction for IbTransaction {
+    fn get_amount(&self) -> Decimal {
+        Decimal::ZERO
+    }
+
+    fn get_currency(&self) -> &str {
+        "FAKE"
+    }
+
+    fn get_account(&self) -> &str {
+        "FAKE:ACCOUNT"
+    }
+}
+
+impl Ib {
     pub async fn get_balance() -> Decimal {
         let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
         let query_id =
@@ -173,8 +187,18 @@ impl Ib {
         let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
         let query_id = &config::ib_flex_transactions_query_id()
             .expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
-        let _t = Ib::fetch_flex_statement(token, query_id).await;
-        vec![]
+        let statement = Ib::fetch_flex_statement(token, query_id).await;
+        let trades = statement
+            .trades
+            .into_iter()
+            .flat_map(|t| t.items)
+            .map(IbTransaction::Trade);
+        let cash = statement
+            .cash_transactions
+            .into_iter()
+            .flat_map(|t| t.items)
+            .map(IbTransaction::Cash);
+        trades.chain(cash).collect()
     }
 
     async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
@@ -256,36 +280,12 @@ impl ImportAccount for Ib {
     }
 }
 
-pub fn deserialize_record<'a, T>(
-    record: &'a StringRecord,
-    headers: &'a StringRecord,
-    target_vec: &mut Vec<T>,
-) where
-    T: Deserialize<'a>,
-{
-    if record[2].to_ascii_lowercase().contains("total") {
-        // Some rows are totals, which we should skip
-        return;
-    }
-    match record.deserialize::<'a, T>(Some(headers)) {
-        Ok(row) => target_vec.push(row),
-        Err(e) => error!("{:?}", e),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use serde_xml_rs::from_reader;
 
     use super::Ib;
     use crate::ib::FlexStatementRequestResponse;
-
-    #[test]
-    #[ignore]
-    fn example() {
-        let report = Ib::read_report();
-        println!("{:#?}", report);
-    }
 
     #[test]
     fn deserialize_flex_response() {
@@ -311,4 +311,8 @@ mod tests {
         dotenv::dotenv().ok();
         Ib::get_transactions().await;
     }
+}
+
+fn ib_date(date_str: &str) -> NaiveDate {
+    NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap()
 }

@@ -57,7 +57,7 @@ export const getMatchingAccount = (t: HledgerTransaction, importAccountId: strin
   return t.tpostings?.find((p: Posting) => p.paccount.toLowerCase().includes(importAccountId.toLowerCase()))?.paccount;
 };
 
-export const getUnmatchingAccount = (t: HledgerTransaction, importAccountId: string): string | undefined => {
-  return t.tpostings?.find((p: Posting) => !p.paccount.toLowerCase().includes(":" + importAccountId.toLowerCase()))
-    ?.paccount;
-};
+export const getUnmatchingAccounts = (t: HledgerTransaction, importAccountId: string): string[] =>
+  (t.tpostings ?? [])
+    .filter((p: Posting) => !p.paccount.toLowerCase().includes(":" + importAccountId.toLowerCase()))
+    .map((p: Posting) => p.paccount);

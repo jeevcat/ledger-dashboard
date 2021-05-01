@@ -56,11 +56,14 @@ impl Rule {
             .render_description_from_rule(self, real_transaction)
             .unwrap_or_default();
 
-        Some(HledgerTransaction::new_with_postings(
-            real_transaction,
-            &description,
-            &self.target_account,
-        ))
+        Some(
+            HledgerTransaction::new(
+                &description,
+                real_transaction.get_date(),
+                &real_transaction.get_id(),
+            )
+            .postings(&mut real_transaction.get_postings(&self.target_account)),
+        )
     }
 }
 
