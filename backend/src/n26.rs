@@ -1,12 +1,14 @@
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
+        Arc,
     },
     thread,
+    time::Instant,
 };
 
 use async_trait::async_trait;
+use cached::proc_macro::cached;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use log::info;
 use rust_decimal::Decimal;
@@ -44,9 +46,69 @@ const MFA_TOKEN: &str = "mfaToken";
 const CHALLENGE_TYPE: &str = "challengeType";
 const CHALLENGE_TYPE_OOB: &str = "oob";
 
+/// Retrieves the current balance
+#[cached(time = 600)]
+async fn get_accounts_request(token: String) -> N26Accounts {
+    let request_url: String = format!("{}/api/accounts", BASE_URL_DE);
+    let response = reqwest::Client::new()
+        .get(&request_url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .unwrap();
+
+    response.json().await.unwrap()
+}
+
+/// Get a list of transactions.
+/// * `from_time` - earliest transaction time as a Timestamp > 0 - milliseconds since 1970 in CET
+/// * `to_time`   - latest transaction time as a Timestamp > 0 - milliseconds since 1970 in CET
+/// * `limit`     - Limit the number of transactions to return to the given amount
+/// * `last_id`   - ??
+/// Returns a list of transactions
+#[cached(time = 600)]
+async fn get_transactions_request(
+    token: String,
+    from_time: Option<NaiveDateTime>,
+    to_time: Option<NaiveDateTime>,
+    limit: Option<u32>,
+    last_id: Option<String>,
+) -> Vec<N26Transaction> {
+    let mut params = vec![];
+    if let Some(from) = from_time {
+        params.push(("from", from.timestamp_millis().to_string()));
+    }
+    if let Some(to) = to_time {
+        params.push(("to", to.timestamp_millis().to_string()));
+    }
+    if let Some(last_id) = last_id {
+        params.push(("lastId", last_id));
+    }
+    if let Some(limit) = limit {
+        params.push(("limit", limit.to_string()));
+    }
+
+    let request_url: String = format!("{}/api/smrt/transactions", BASE_URL_DE);
+    let response = reqwest::Client::new()
+        .get(&request_url)
+        .bearer_auth(token)
+        .query(&params)
+        .send()
+        .await
+        .unwrap();
+
+    let transactions = response.json::<Vec<N26Transaction>>().await.unwrap();
+    // For some reason the api doesn't resect the "from" parameter
+    if let Some(from) = from_time {
+        return transactions
+            .into_iter()
+            .filter(|t| t.get_date() >= from.date())
+            .collect();
+    }
+    transactions
+}
+
 pub struct N26 {
-    cache: RwLock<Vec<N26Transaction>>,
-    cache_valid: AtomicBool,
     http_client: reqwest::Client,
     db: Arc<Database>,
     waiting_for_mfa: AtomicBool,
@@ -55,8 +117,6 @@ pub struct N26 {
 impl N26 {
     pub fn new(db: Arc<Database>) -> Self {
         Self {
-            cache: RwLock::new(Vec::new()),
-            cache_valid: AtomicBool::new(false),
             http_client: reqwest::Client::new(),
             waiting_for_mfa: AtomicBool::new(false),
             db,
@@ -79,25 +139,6 @@ impl N26 {
         return false;
     }
 
-    // Cache
-
-    pub fn _invalidate_cache(&self) {
-        self.cache_valid.store(false, Ordering::SeqCst);
-    }
-
-    fn is_cache_valid(&self) -> bool {
-        self.cache_valid.load(Ordering::SeqCst)
-    }
-
-    fn get_cached_transactions(&self) -> Vec<N26Transaction> {
-        self.cache.read().unwrap().clone()
-    }
-
-    fn cache_transactions(&self, transactions: &[N26Transaction]) {
-        self.cache_valid.store(true, Ordering::SeqCst);
-        *self.cache.write().unwrap() = transactions.into();
-    }
-
     fn get_authentication(&self) -> Option<TokenData> {
         self.db.get_auth()
     }
@@ -108,72 +149,6 @@ impl N26 {
 
     fn clear_authentication(&self) {
         self.db.set_auth(None)
-    }
-
-    /// Get a list of transactions.
-    /// * `from_time` - earliest transaction time as a Timestamp > 0 - milliseconds since 1970 in CET
-    /// * `to_time`   - latest transaction time as a Timestamp > 0 - milliseconds since 1970 in CET
-    /// * `limit`     - Limit the number of transactions to return to the given amount
-    /// * `last_id`   - ??
-    /// Returns a list of transactions
-    async fn get_transactions_request(
-        &self,
-        from_time: Option<NaiveDateTime>,
-        to_time: Option<NaiveDateTime>,
-        limit: Option<u32>,
-        last_id: Option<&str>,
-    ) -> Vec<N26Transaction> {
-        let mut params = vec![];
-        if let Some(from) = from_time {
-            params.push(("from", from.timestamp_millis().to_string()));
-        }
-        if let Some(to) = to_time {
-            params.push(("to", to.timestamp_millis().to_string()));
-        }
-        if let Some(last_id) = last_id {
-            params.push(("lastId", last_id.to_string()));
-        }
-        if let Some(limit) = limit {
-            params.push(("limit", limit.to_string()));
-        }
-
-        let token = self.get_token().await;
-
-        let request_url: String = format!("{}/api/smrt/transactions", BASE_URL_DE);
-        let response = self
-            .http_client
-            .get(&request_url)
-            .bearer_auth(token)
-            .query(&params)
-            .send()
-            .await
-            .unwrap();
-
-        let transactions = response.json::<Vec<N26Transaction>>().await.unwrap();
-        // For some reason the api doesn't resect the "from" parameter
-        if let Some(from) = from_time {
-            return transactions
-                .into_iter()
-                .filter(|t| t.get_date() >= from.date())
-                .collect();
-        }
-        transactions
-    }
-
-    /// Retrieves the current balance
-    async fn get_accounts_request(&self) -> N26Accounts {
-        let token = self.get_token().await;
-
-        let request_url: String = format!("{}/api/accounts", BASE_URL_DE);
-        let response = self
-            .http_client
-            .get(&request_url)
-            .bearer_auth(token)
-            .send()
-            .await
-            .unwrap();
-
-        response.json().await.unwrap()
     }
 
     /* Authenication flow:
@@ -250,23 +225,23 @@ impl ImportAccount for N26 {
     type RealTransactionType = N26Transaction;
 
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
-        if self.is_cache_valid() {
-            info!("N26 using cache!");
-            return self.get_cached_transactions();
-        }
-
+        let start = Instant::now();
+        let token = self.get_token().await;
         let from = NaiveDate::from_ymd(2019, 1, 1).and_hms(0, 0, 0);
-        let all: Vec<N26Transaction> = self
-            .get_transactions_request(Some(from), None, Some(std::i32::MAX as u32), None)
-            .await;
 
-        self.cache_transactions(&all);
-
-        self.get_cached_transactions()
+        let response =
+            get_transactions_request(token, Some(from), None, Some(std::i32::MAX as u32), None)
+                .await;
+        info!("Fetch transactions from N26 took {:?}", start.elapsed());
+        response
     }
 
     async fn get_balance(&self) -> Decimal {
-        self.get_accounts_request().await.available_balance
+        let start = Instant::now();
+        let token = self.get_token().await;
+        let response = get_accounts_request(token).await;
+        info!("Fetch balance from N26 took {:?}", start.elapsed());
+        response.available_balance
     }
 
     fn get_hledger_account(&self) -> &str {

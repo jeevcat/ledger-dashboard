@@ -32,6 +32,7 @@ rust_decimal = { version ="1", features = ["serde-float"] }
 rustbreak = { version = "2.0.0", features = ["yaml_enc"] }
 regex = "1"
 handlebars = "3"
+cached = "0.23"
 
 [dev-dependencies]
 lazy_static = "1"

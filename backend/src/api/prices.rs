@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{dev::HttpServiceFactory, web, HttpResponse};
+use log::info;
 
 use crate::{hledger::Hledger, prices::Prices};
 
@@ -13,7 +14,7 @@ async fn update_prices(
     hledger: web::Data<Arc<Hledger>>,
 ) -> HttpResponse {
     let commodities = hledger.get_commodities().await;
-    println!("{:#?}", commodities);
+    info!("{:#?}", commodities);
     prices.update_prices(&commodities).await;
     HttpResponse::Ok().finish()
 }

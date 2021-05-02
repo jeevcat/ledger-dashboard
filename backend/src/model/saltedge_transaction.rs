@@ -9,7 +9,7 @@ use super::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction
 
 const DATE_FMT: &str = "%Y-%m-%d";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SaltEdgeTransaction {
     id: String,
     made_on: String,

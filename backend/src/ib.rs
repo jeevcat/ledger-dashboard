@@ -3,6 +3,7 @@ use std::time::Duration;
 use actix::clock::delay_for;
 use actix_web::web::Buf;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
 use chrono::NaiveDate;
 use log::info;
 use rust_decimal::Decimal;
@@ -16,6 +17,7 @@ use crate::{
 };
 
 const DATE_FMT: &str = "%Y%m%d;%H%M%S";
+const MAX_RETRIES: u32 = 10;
 
 pub struct Ib;
 
@@ -28,15 +30,19 @@ enum FlexStatementStatus {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-struct FlexStatementRequestResponse {
+struct FlexStatatementStatusResponse {
     status: FlexStatementStatus,
-    reference_code: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct FlexStatementRequestResponse {
+    reference_code: String,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct FlexStatementGetResponse {
-    status: Option<FlexStatementStatus>,
     flex_statements: Option<FlexStatements>,
 }
 
@@ -159,108 +165,99 @@ impl DefaultPostingTransaction for IbTransaction {
     }
 }
 
-impl Ib {
-    pub async fn get_balance() -> Decimal {
-        let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-        let query_id =
-            &config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
-        let balance = Ib::fetch_flex_statement(token, query_id).await;
-        println!("{:#?}", balance);
-        let position_sum = balance
-            .open_positions
-            .unwrap()
-            .items
-            .into_iter()
-            .fold(Decimal::ZERO, |acc, p| acc + p.position_value);
-        let cash_sum = balance
-            .cash_report
-            .unwrap()
-            .items
-            .into_iter()
-            .find(|c| c.currency == "BASE_SUMMARY")
-            .unwrap()
-            .ending_cash;
-        position_sum + cash_sum
-    }
+#[cached(time = 600)]
+pub async fn get_balance() -> Decimal {
+    let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
+    let query_id =
+        &config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
+    let balance = fetch_flex_statement(token, query_id).await;
+    let position_sum = balance
+        .open_positions
+        .unwrap()
+        .items
+        .into_iter()
+        .fold(Decimal::ZERO, |acc, p| acc + p.position_value);
+    let cash_sum = balance
+        .cash_report
+        .unwrap()
+        .items
+        .into_iter()
+        .find(|c| c.currency == "BASE_SUMMARY")
+        .unwrap()
+        .ending_cash;
+    position_sum + cash_sum
+}
 
-    pub async fn get_transactions() -> Vec<IbTransaction> {
-        let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-        let query_id = &config::ib_flex_transactions_query_id()
-            .expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
-        let statement = Ib::fetch_flex_statement(token, query_id).await;
-        let trades = statement
-            .trades
-            .into_iter()
-            .flat_map(|t| t.items)
-            .map(IbTransaction::Trade);
-        let cash = statement
-            .cash_transactions
-            .into_iter()
-            .flat_map(|t| t.items)
-            .map(IbTransaction::Cash);
-        trades.chain(cash).collect()
-    }
-
-    async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
-        let reference_code = Ib::request_flex_statement(token, query_id).await;
-
-        let mut retries: i32 = 3;
-        let mut wait: u64 = 1;
-        loop {
-            let statement = Ib::get_flex_statement(&reference_code, token).await;
-            match statement.status {
-                Some(status) => {
-                    if let FlexStatementStatus::Warn = status {
-                        if retries > 0 {
-                            info!("Statement not ready yet. Waiting {} sec...", wait);
-                            retries -= 1;
-                            delay_for(Duration::from_secs(wait)).await;
-                            wait *= 2;
-                        } else {
-                            panic!("Still couldn't get flex statement after 3 retries");
-                        }
-                    }
-                }
-                _ => {
-                    return statement
-                        .flex_statements
-                        .unwrap()
-                        .items
-                        .into_iter()
-                        .next()
-                        .unwrap()
+async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
+    let mut retries = MAX_RETRIES;
+    let mut wait: u64 = 1;
+    loop {
+        let text = reqwest::get(url).await.unwrap().bytes().await.unwrap();
+        let response: FlexStatatementStatusResponse = from_reader(text.bytes()).unwrap();
+        match response.status {
+            FlexStatementStatus::Success => return from_reader(text.bytes()).unwrap(),
+            _ => {
+                if retries > 0 {
+                    info!("Flex not ready yet. Waiting {} sec...", wait);
+                    retries -= 1;
+                    delay_for(Duration::from_secs(wait)).await;
+                    wait *= 2;
+                } else {
+                    panic!(
+                        "Still couldn't request flex statement after {} retries",
+                        MAX_RETRIES
+                    );
                 }
             }
         }
     }
+}
 
-    /// Returns statement reference code
-    async fn request_flex_statement(token: &str, query_id: &str) -> String {
-        let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
-        let mut retries: i32 = 3;
-        let mut wait: u64 = 1;
-        loop {
-            let text = reqwest::get(&url).await.unwrap().bytes().await.unwrap();
-            let response: FlexStatementRequestResponse = from_reader(text.bytes()).unwrap();
-            match response.status {
-                FlexStatementStatus::Success => return response.reference_code.unwrap(),
-                _ => {
-                    if retries > 0 {
-                        info!("Statement not ready yet. Waiting {} sec...", wait);
-                        retries -= 1;
-                        delay_for(Duration::from_secs(wait)).await;
-                        wait *= 2;
-                    }
-                }
-            }
-        }
-    }
+async fn get_transactions() -> Vec<IbTransaction> {
+    let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
+    let query_id = &config::ib_flex_transactions_query_id()
+        .expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
+    let statement = fetch_flex_statement(token, query_id).await;
+    let trades = statement
+        .trades
+        .into_iter()
+        .flat_map(|t| t.items)
+        .map(IbTransaction::Trade);
+    let cash = statement
+        .cash_transactions
+        .into_iter()
+        .flat_map(|t| t.items)
+        .map(IbTransaction::Cash);
+    trades.chain(cash).collect()
+}
 
-    async fn get_flex_statement(reference_code: &str, token: &str) -> FlexStatementGetResponse {
-        let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?q={}&t={}&v=3", reference_code, token);
-        let text = reqwest::get(&url).await.unwrap().bytes().await.unwrap();
-        from_reader(text.bytes()).unwrap()
-    }
+async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
+    let reference_code = request_flex_statement(token, query_id).await;
+    get_flex_statement(&reference_code, token).await
+}
+
+/// Returns statement reference code
+async fn request_flex_statement(token: &str, query_id: &str) -> String {
+    let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
+    let response: FlexStatementRequestResponse = retried_request(&url).await;
+    response.reference_code
+}
+
+async fn get_flex_statement(reference_code: &str, token: &str) -> FlexStatement {
+    let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement?q={}&t={}&v=3", reference_code, token);
+    info!("Getting fetch statement using {}", &url);
+    let response: FlexStatementGetResponse = retried_request(&url).await;
+    response
+        .flex_statements
+        .unwrap()
+        .items
+        .into_iter()
+        .next()
+        .unwrap()
+}
+
+fn ib_date(date_str: &str) -> NaiveDate {
+    NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap()
 }
 
 #[async_trait]
@@ -268,11 +265,11 @@ impl ImportAccount for Ib {
     type RealTransactionType = IbTransaction;
 
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
-        Ib::get_transactions().await
+        get_transactions().await
     }
 
     async fn get_balance(&self) -> Decimal {
-        Ib::get_balance().await
+        get_balance().await
     }
 
     fn get_hledger_account(&self) -> &str {
@@ -284,8 +281,8 @@ impl ImportAccount for Ib {
 mod tests {
     use serde_xml_rs::from_reader;
 
-    use super::Ib;
-    use crate::ib::FlexStatementRequestResponse;
+    use super::get_transactions;
+    use crate::ib::{get_balance, FlexStatementRequestResponse};
 
     #[test]
     fn deserialize_flex_response() {
@@ -296,23 +293,19 @@ mod tests {
 </FlexStatementResponse>
 "#;
         let response: FlexStatementRequestResponse = from_reader(xml.as_bytes()).unwrap();
-        assert_eq!(response.reference_code.unwrap(), "1234567890");
+        assert_eq!(response.reference_code, "1234567890");
     }
 
     #[actix_rt::test]
-    async fn get_balance() {
+    async fn check_get_balance() {
         dotenv::dotenv().ok();
-        let bal = Ib::get_balance().await;
+        let bal = get_balance().await;
         println!("{:#?}", bal);
     }
 
     #[actix_rt::test]
-    async fn get_transactions() {
+    async fn check_get_transactions() {
         dotenv::dotenv().ok();
-        Ib::get_transactions().await;
+        get_transactions().await;
     }
-}
-
-fn ib_date(date_str: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap()
 }
