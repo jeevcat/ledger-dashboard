@@ -18,6 +18,7 @@ use crate::{
 
 const DATE_FMT: &str = "%Y%m%d;%H%M%S";
 const MAX_RETRIES: u32 = 10;
+const FIRST_RETRY_DELAY: u32 = 10;
 
 pub struct Ib;
 
@@ -190,7 +191,7 @@ pub async fn get_balance() -> Decimal {
 
 async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
     let mut retries = MAX_RETRIES;
-    let mut wait: u64 = 1;
+    let mut wait = FIRST_RETRY_DELAY;
     loop {
         let text = reqwest::get(url).await.unwrap().bytes().await.unwrap();
         let response: FlexStatatementStatusResponse = from_reader(text.bytes()).unwrap();
@@ -232,12 +233,14 @@ async fn get_transactions() -> Vec<IbTransaction> {
 }
 
 async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
-    let reference_code = request_flex_statement(token, query_id).await;
+    let reference_code = enqueue_flex_statement_request(token, query_id).await;
     get_flex_statement(&reference_code, token).await
 }
 
 /// Returns statement reference code
-async fn request_flex_statement(token: &str, query_id: &str) -> String {
+/// Cache this for a day so we avoid re-queueing flex statement requests
+#[cached(time = 86400)]
+async fn enqueue_flex_statement_request(token: &str, query_id: &str) -> String {
     let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
     let response: FlexStatementRequestResponse = retried_request(&url).await;
     response.reference_code
