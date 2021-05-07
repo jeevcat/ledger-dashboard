@@ -61,7 +61,6 @@ const RulesTable: React.FC<Props> = ({
               error={errors[r.id]}
               onEdit={onEditRuleRequested}
               onDelete={onDeleteRuleRequested}
-              ruleFields={ruleFields}
             />
           ))}
           <Table.Row>

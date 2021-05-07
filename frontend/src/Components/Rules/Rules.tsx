@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import { Button, Icon, Loader, Modal } from "semantic-ui-react";
+import { Button, Icon, Loader } from "semantic-ui-react";
 import { RealTransactionField } from "../../Models/ImportRow";
 import { Rule } from "../../Models/Rule";
 import { AccountsContext } from "../../Utils/AccountsContext";
@@ -7,7 +7,6 @@ import { deleteRule, getRules, setRule } from "../../Utils/BackendRequester";
 import RulesTable from "./RulesTable";
 
 interface Props {
-  onRulesChanged: () => void;
   realTransactionFields: RealTransactionField[];
 }
 
@@ -15,8 +14,7 @@ const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 
 type RuleErrors = { [rule: number]: string | undefined };
 
-const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) => {
-  const [rulesOpen, setRulesOpen] = useState(false);
+const Rules: React.FC<Props> = ({ realTransactionFields }) => {
   const [isLoadingRules, setIsLoadingRules] = useState(false);
   const [dirtyRules, setDirtyRules] = useState<number[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -97,52 +95,31 @@ const RulesModal: React.FC<Props> = ({ onRulesChanged, realTransactionFields }) 
 
   const updateRules = () => {
     fetchRules();
-    onRulesChanged();
   };
 
   useEffect(() => {
     fetchRules();
   }, [fetchRules]);
 
-  return (
-    <Modal
-      size="fullscreen"
-      onClose={() => setRulesOpen(false)}
-      onOpen={() => setRulesOpen(true)}
-      open={rulesOpen}
-      trigger={<Button>Edit Rules</Button>}
-    >
-      <Modal.Header>Rules</Modal.Header>
-      <Modal.Content>
-        {isLoadingRules ? (
-          <Loader active />
-        ) : (
-          <RulesTable
-            errors={errors}
-            ruleFields={realTransactionFields}
-            rules={rules}
-            onDeleteRuleRequested={handleRuleDelete}
-            onEditRuleRequested={handleRuleEdit}
-            onNewRuleRequested={handleRuleNew}
-          />
-        )}
-      </Modal.Content>
-      <Modal.Actions>
-        <Button color="red" onClick={() => setRulesOpen(false)}>
-          <Icon name="remove" /> Cancel
-        </Button>
-        <Button
-          color="green"
-          disabled={dirtyRules.length === 0}
-          onClick={() => {
-            handleRuleSave().then(setRulesOpen);
-          }}
-        >
+  if (isLoadingRules) {
+    return <Loader active />;
+  } else {
+    return (
+      <>
+        <RulesTable
+          errors={errors}
+          ruleFields={realTransactionFields}
+          rules={rules}
+          onDeleteRuleRequested={handleRuleDelete}
+          onEditRuleRequested={handleRuleEdit}
+          onNewRuleRequested={handleRuleNew}
+        />
+        <Button color="green" disabled={dirtyRules.length === 0} onClick={handleRuleSave}>
           <Icon name="save" /> Save
         </Button>
-      </Modal.Actions>
-    </Modal>
-  );
+      </>
+    );
+  }
 };
 
-export default RulesModal;
+export default Rules;

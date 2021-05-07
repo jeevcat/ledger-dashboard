@@ -18,7 +18,7 @@ use crate::{
 
 const DATE_FMT: &str = "%Y%m%d;%H%M%S";
 const MAX_RETRIES: u32 = 10;
-const FIRST_RETRY_DELAY: u32 = 10;
+const FIRST_RETRY_DELAY: u64 = 10;
 
 pub struct Ib;
 
@@ -168,9 +168,9 @@ impl DefaultPostingTransaction for IbTransaction {
 
 #[cached(time = 600)]
 pub async fn get_balance() -> Decimal {
-    let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
+    let token = config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
     let query_id =
-        &config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
+        config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
     let balance = fetch_flex_statement(token, query_id).await;
     let position_sum = balance
         .open_positions
@@ -194,9 +194,13 @@ async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
     let mut wait = FIRST_RETRY_DELAY;
     loop {
         let text = reqwest::get(url).await.unwrap().bytes().await.unwrap();
-        let response: FlexStatatementStatusResponse = from_reader(text.bytes()).unwrap();
+        let bytes = text.bytes();
+        if let Ok(already_available) = from_reader(bytes) {
+            return already_available;
+        }
+        let response: FlexStatatementStatusResponse = from_reader(bytes).unwrap();
         match response.status {
-            FlexStatementStatus::Success => return from_reader(text.bytes()).unwrap(),
+            FlexStatementStatus::Success => return from_reader(bytes).unwrap(),
             _ => {
                 if retries > 0 {
                     info!("Flex not ready yet. Waiting {} sec...", wait);
@@ -215,9 +219,9 @@ async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
 }
 
 async fn get_transactions() -> Vec<IbTransaction> {
-    let token = &config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-    let query_id = &config::ib_flex_transactions_query_id()
-        .expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
+    let token = config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
+    let query_id =
+        config::ib_flex_transactions_query_id().expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
     let statement = fetch_flex_statement(token, query_id).await;
     let trades = statement
         .trades
@@ -232,15 +236,15 @@ async fn get_transactions() -> Vec<IbTransaction> {
     trades.chain(cash).collect()
 }
 
-async fn fetch_flex_statement(token: &str, query_id: &str) -> FlexStatement {
-    let reference_code = enqueue_flex_statement_request(token, query_id).await;
-    get_flex_statement(&reference_code, token).await
+async fn fetch_flex_statement(token: String, query_id: String) -> FlexStatement {
+    let reference_code = enqueue_flex_statement_request(token.clone(), query_id).await;
+    get_flex_statement(&reference_code, &token).await
 }
 
 /// Returns statement reference code
 /// Cache this for a day so we avoid re-queueing flex statement requests
 #[cached(time = 86400)]
-async fn enqueue_flex_statement_request(token: &str, query_id: &str) -> String {
+async fn enqueue_flex_statement_request(token: String, query_id: String) -> String {
     let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
     let response: FlexStatementRequestResponse = retried_request(&url).await;
     response.reference_code

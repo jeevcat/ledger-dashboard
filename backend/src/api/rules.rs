@@ -33,7 +33,7 @@ pub fn rules_routes() -> impl HttpServiceFactory {
 }
 
 pub fn rule_routes() -> impl HttpServiceFactory {
-    web::resource("/rule")
+    web::resource("/rule/{rule_id}")
         .route(web::get().to(get_rule))
         .route(web::delete().to(delete_rule))
 }

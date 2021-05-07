@@ -21,7 +21,7 @@ import { TransactionTable } from "./TransactionTable";
 export interface Tab {
   name: string;
   icon: SemanticICONS;
-  transactionSource: (account: ImportAccount) => Promise<TransactionResponse[]>;
+  transactionSource?: (account: ImportAccount) => Promise<TransactionResponse[]>;
 }
 
 interface RouterProps {

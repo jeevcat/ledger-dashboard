@@ -378,15 +378,13 @@ impl Hledger {
 
 fn get_total_from_csv(reader: impl std::io::Read) -> Option<Decimal> {
     let mut reader = csv::Reader::from_reader(reader);
-    for result in reader.records() {
-        if let Ok(record) = result {
-            if let Some(account) = record.get(0) {
-                if account != "total" {
-                    continue;
-                }
-                if let Some(total) = record.get(1) {
-                    return currency_amount_to_decimal(total);
-                }
+    for record in reader.records().flatten() {
+        if let Some(account) = record.get(0) {
+            if account != "total" {
+                continue;
+            }
+            if let Some(total) = record.get(1) {
+                return currency_amount_to_decimal(total);
             }
         }
     }
@@ -448,54 +446,52 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
         .has_headers(false)
         .flexible(true)
         .from_reader(reader);
-    for result in reader.records() {
-        if let Ok(record) = result {
-            match parse_state {
-                ParseState::Description => {
-                    if let Some(description) = record.get(0) {
-                        if description.starts_with("Income Statement") {
-                            let date_range = description.split(' ').nth(2).unwrap();
-                            let mut split = date_range.split("..");
+    for record in reader.records().flatten() {
+        match parse_state {
+            ParseState::Description => {
+                if let Some(description) = record.get(0) {
+                    if description.starts_with("Income Statement") {
+                        let date_range = description.split(' ').nth(2).unwrap();
+                        let mut split = date_range.split("..");
 
-                            let start = split.next().unwrap();
-                            start_date = NaiveDate::parse_from_str(start, DATE_FMT).unwrap();
-                            parse_state = ParseState::Months;
-                        }
+                        let start = split.next().unwrap();
+                        start_date = NaiveDate::parse_from_str(start, DATE_FMT).unwrap();
+                        parse_state = ParseState::Months;
                     }
                 }
-                ParseState::Months => {
-                    if let Some(title) = record.get(0) {
-                        if title == "Account" {
-                            let mut date = last_day_of_month(start_date);
-                            for _ in record.iter().skip(1) {
-                                dates.push(date);
-                                date = last_day_of_next_month(date);
-                            }
-                            parse_state = ParseState::Revenues;
+            }
+            ParseState::Months => {
+                if let Some(title) = record.get(0) {
+                    if title == "Account" {
+                        let mut date = last_day_of_month(start_date);
+                        for _ in record.iter().skip(1) {
+                            dates.push(date);
+                            date = last_day_of_next_month(date);
                         }
+                        parse_state = ParseState::Revenues;
                     }
                 }
-                ParseState::Revenues => {
-                    if let Some(title) = record.get(0) {
-                        if title == "Total:" {
-                            revenues = record_prices(record);
-                            assert_eq!(dates.len(), revenues.len());
-                            parse_state = ParseState::Expenses;
-                        }
+            }
+            ParseState::Revenues => {
+                if let Some(title) = record.get(0) {
+                    if title == "Total:" {
+                        revenues = record_prices(record);
+                        assert_eq!(dates.len(), revenues.len());
+                        parse_state = ParseState::Expenses;
                     }
                 }
-                ParseState::Expenses => {
-                    if let Some(title) = record.get(0) {
-                        if title == "Total:" {
-                            expenses = record_prices(record);
-                            assert_eq!(dates.len(), expenses.len());
-                            parse_state = ParseState::Done;
-                        }
+            }
+            ParseState::Expenses => {
+                if let Some(title) = record.get(0) {
+                    if title == "Total:" {
+                        expenses = record_prices(record);
+                        assert_eq!(dates.len(), expenses.len());
+                        parse_state = ParseState::Done;
                     }
                 }
-                ParseState::Done => {
-                    break;
-                }
+            }
+            ParseState::Done => {
+                break;
             }
         }
     }

@@ -20,7 +20,7 @@ export const ImportAccounts: ImportAccount[] = [
     humanName: "N26",
     id: "n26",
     icon: "https://play-lh.googleusercontent.com/85SeCCkigrkJV5b7aHUQc07CozV1xLaIK_UZ7A1_VeeXK9k4CTMIWsXGSfQJrGYHGWs",
-    defaultColumns: ["visibleTS", "referenceText", "partnerName", "merchantName", "amount"],
+    defaultColumns: ["visibleTS", "referenceText", "partnerName", "merchantName", "mcc", "amount"],
   },
   {
     humanName: "Interactive Brokers",

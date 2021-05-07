@@ -19,7 +19,7 @@ log = "*"
 env_logger = "0.8"
 async-trait = "0.1"
 
-reqwest = { version = "0.10", features = ["json"] } # waiting on actix web to use actix 0.11
+reqwest = { version = "0.10", features = ["json"] } # waiting on actix web to use actix 0.11. Seems this is coming in actix web v4
 futures = "*"
 chrono = { version = "0.4", features = ["serde"] }
 serde = "1"
