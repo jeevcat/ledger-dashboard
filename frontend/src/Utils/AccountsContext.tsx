@@ -17,9 +17,11 @@ export const AccountsContextComponent: React.FC<Props> = ({ importAccount, child
   const [accounts, setAccounts] = useState<string[]>([]);
 
   const fetchAccounts = () => {
-    getAccounts().then((data: string[]) => {
-      setAccounts(data);
-    });
+    getAccounts()
+      .then((data: string[]) => {
+        setAccounts(data);
+      })
+      .catch((e) => console.error(`Couldn't fetch accounts: ${e}`));
   };
 
   useEffect(() => {

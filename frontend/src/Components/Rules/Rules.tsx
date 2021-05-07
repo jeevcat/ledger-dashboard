@@ -1,20 +1,17 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import { Button, Icon, Loader } from "semantic-ui-react";
-import { RealTransactionField } from "../../Models/ImportRow";
+import { Button, Container, Icon, Loader } from "semantic-ui-react";
 import { Rule } from "../../Models/Rule";
 import { AccountsContext } from "../../Utils/AccountsContext";
 import { deleteRule, getRules, setRule } from "../../Utils/BackendRequester";
 import RulesTable from "./RulesTable";
 
-interface Props {
-  realTransactionFields: RealTransactionField[];
-}
+interface Props {}
 
 const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 
 type RuleErrors = { [rule: number]: string | undefined };
 
-const Rules: React.FC<Props> = ({ realTransactionFields }) => {
+const Rules: React.FC<Props> = () => {
   const [isLoadingRules, setIsLoadingRules] = useState(false);
   const [dirtyRules, setDirtyRules] = useState<number[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -87,10 +84,12 @@ const Rules: React.FC<Props> = ({ realTransactionFields }) => {
 
   const fetchRules = useCallback(() => {
     setIsLoadingRules(true);
-    getRules(importAccount).then((data: Rule[]) => {
-      setRules(data);
-      setIsLoadingRules(false);
-    });
+    getRules(importAccount)
+      .then((data: Rule[]) => {
+        setRules(data);
+        setIsLoadingRules(false);
+      })
+      .catch((e) => console.error(`Couldn't fetch rules ${e}`));
   }, [importAccount]);
 
   const updateRules = () => {
@@ -108,15 +107,21 @@ const Rules: React.FC<Props> = ({ realTransactionFields }) => {
       <>
         <RulesTable
           errors={errors}
-          ruleFields={realTransactionFields}
           rules={rules}
           onDeleteRuleRequested={handleRuleDelete}
           onEditRuleRequested={handleRuleEdit}
-          onNewRuleRequested={handleRuleNew}
         />
-        <Button color="green" disabled={dirtyRules.length === 0} onClick={handleRuleSave}>
-          <Icon name="save" /> Save
-        </Button>
+        <br />
+        <Container fluid textAlign="right">
+          <Button primary icon labelPosition="right" onClick={handleRuleNew}>
+            New
+            <Icon name="add" />
+          </Button>
+          <Button color="green" icon labelPosition="right" disabled={dirtyRules.length === 0} onClick={handleRuleSave}>
+            Save
+            <Icon name="save" />
+          </Button>
+        </Container>
       </>
     );
   }

@@ -114,7 +114,7 @@ export const Import: React.FC = () => {
     if (areTransactionsLoading) {
       return <Loader active />;
     } else if (tabId === TransactionTabType.Rules) {
-      return <Rules realTransactionFields={realTransactionFields} />;
+      return <Rules />;
     } else {
       return (
         <TransactionTabs

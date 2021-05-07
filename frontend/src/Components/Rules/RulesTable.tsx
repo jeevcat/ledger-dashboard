@@ -1,6 +1,5 @@
 import React from "react";
-import { Button, Container, Icon, Table } from "semantic-ui-react";
-import { RealTransactionField } from "../../Models/ImportRow";
+import { Container, Table } from "semantic-ui-react";
 import { Rule } from "../../Models/Rule";
 import RuleComponent from "./Rule";
 
@@ -9,20 +8,11 @@ type RuleErrors = { [rule: number]: string | undefined };
 interface Props {
   onDeleteRuleRequested: (rule: Rule) => void;
   onEditRuleRequested: (id: number, field: keyof Rule, value: string) => void;
-  onNewRuleRequested: () => void;
   rules: Rule[];
   errors: RuleErrors;
-  ruleFields: RealTransactionField[];
 }
 
-const RulesTable: React.FC<Props> = ({
-  onDeleteRuleRequested,
-  onEditRuleRequested,
-  onNewRuleRequested,
-  rules,
-  errors,
-  ruleFields,
-}) => {
+const RulesTable: React.FC<Props> = ({ onDeleteRuleRequested, onEditRuleRequested, rules, errors }) => {
   const ruleSort = (a: Rule, b: Rule) => {
     if (a.priority < b.priority) {
       return -1;
@@ -63,14 +53,6 @@ const RulesTable: React.FC<Props> = ({
               onDelete={onDeleteRuleRequested}
             />
           ))}
-          <Table.Row>
-            <Table.Cell colSpan="7">
-              <Button primary icon labelPosition="right" onClick={onNewRuleRequested}>
-                New
-                <Icon name="add" />
-              </Button>
-            </Table.Cell>
-          </Table.Row>
         </Table.Body>
       </Table>
     </Container>
