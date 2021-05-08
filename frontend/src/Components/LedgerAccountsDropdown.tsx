@@ -1,9 +1,9 @@
 import React, { useContext, useMemo } from "react";
-import { Dropdown, StrictDropdownProps } from "semantic-ui-react";
+import { Form, StrictFormDropdownProps } from "semantic-ui-react";
 import { AccountsContext } from "../Utils/AccountsContext";
 import { toTitleCase } from "../Utils/TextUtils";
 
-interface Props extends StrictDropdownProps {
+interface Props extends StrictFormDropdownProps {
   account: string;
   onEdit(newAccount: string): void;
 }
@@ -12,7 +12,7 @@ const LedgerAccountsDropdown: React.FC<Props> = ({ account, onEdit, ...props }) 
   const { accounts } = useContext(AccountsContext);
   return useMemo(
     () => (
-      <Dropdown
+      <Form.Dropdown
         {...props}
         placeholder="Account name..."
         fluid

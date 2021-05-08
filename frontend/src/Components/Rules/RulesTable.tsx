@@ -6,13 +6,13 @@ import RuleComponent from "./Rule";
 type RuleErrors = { [rule: number]: string | undefined };
 
 interface Props {
+  onSetRuleRequested: (rule: Rule) => void;
   onDeleteRuleRequested: (rule: Rule) => void;
-  onEditRuleRequested: (id: number, field: keyof Rule, value: string) => void;
   rules: Rule[];
   errors: RuleErrors;
 }
 
-const RulesTable: React.FC<Props> = ({ onDeleteRuleRequested, onEditRuleRequested, rules, errors }) => {
+const RulesTable: React.FC<Props> = ({ onSetRuleRequested, onDeleteRuleRequested, rules, errors }) => {
   const ruleSort = (a: Rule, b: Rule) => {
     if (a.priority < b.priority) {
       return -1;
@@ -34,13 +34,14 @@ const RulesTable: React.FC<Props> = ({ onDeleteRuleRequested, onEditRuleRequeste
       <Table>
         <Table.Header>
           <Table.Row>
-            <Table.HeaderCell width="1">Priority</Table.HeaderCell>
-            <Table.HeaderCell width="2">Name</Table.HeaderCell>
-            <Table.HeaderCell width="2">Field name</Table.HeaderCell>
-            <Table.HeaderCell width="2">Field regex</Table.HeaderCell>
-            <Table.HeaderCell>Account</Table.HeaderCell>
+            <Table.HeaderCell>Priority</Table.HeaderCell>
+            <Table.HeaderCell>Name</Table.HeaderCell>
             <Table.HeaderCell>Description template</Table.HeaderCell>
-            <Table.HeaderCell width="1" />
+            <Table.HeaderCell>Field name</Table.HeaderCell>
+            <Table.HeaderCell>Field regex</Table.HeaderCell>
+            <Table.HeaderCell>Account</Table.HeaderCell>
+            <Table.HeaderCell />
+            <Table.HeaderCell />
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -49,7 +50,7 @@ const RulesTable: React.FC<Props> = ({ onDeleteRuleRequested, onEditRuleRequeste
               key={index}
               rule={r}
               error={errors[r.id]}
-              onEdit={onEditRuleRequested}
+              onSet={onSetRuleRequested}
               onDelete={onDeleteRuleRequested}
             />
           ))}
