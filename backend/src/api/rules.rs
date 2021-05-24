@@ -4,7 +4,11 @@ use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse
 use log::error;
 
 use crate::{
-    db::Database, import_account::ImportAccount, model::rule::Rule, n26::N26, saltedge::SaltEdge,
+    db::Database,
+    import_account::ImportAccount,
+    model::rule::{Rule, RulePosting},
+    n26::N26,
+    saltedge::SaltEdge,
 };
 
 pub fn rules_routes() -> impl HttpServiceFactory {
@@ -57,7 +61,15 @@ where
     T: ImportAccount,
 {
     let mut rule = rule.into_inner();
-    rule.import_account = import_account.get_hledger_account().to_string();
+    if rule.postings.is_empty() {
+        // Add default posting rule
+        rule.postings.push(RulePosting {
+            amount_field_name: None,
+            currency_field_name: None,
+            account: import_account.get_hledger_account().to_string(),
+            negate: false,
+        })
+    }
     db.create_or_update_rule(rule);
     HttpResponse::Ok().finish()
 }

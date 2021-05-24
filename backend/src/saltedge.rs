@@ -84,6 +84,10 @@ impl ImportAccount for SaltEdge {
     fn get_hledger_account(&self) -> &str {
         ING_ACCOUNT
     }
+
+    fn get_id(&self) -> &str {
+        "ing"
+    }
 }
 
 fn account_id() -> String {

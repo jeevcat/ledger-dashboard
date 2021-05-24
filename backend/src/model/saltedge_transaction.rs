@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 
-use super::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction};
+use super::real_transaction::RealTransaction;
 
 const DATE_FMT: &str = "%Y-%m-%d";
 
@@ -13,8 +13,8 @@ const DATE_FMT: &str = "%Y-%m-%d";
 pub struct SaltEdgeTransaction {
     id: String,
     made_on: String,
-    amount: Decimal,
-    currency_code: String,
+    pub amount: Decimal,
+    pub currency_code: String,
     duplicated: bool,
     mode: String,
     status: String,
@@ -38,7 +38,7 @@ where
     Ok(helper)
 }
 
-impl IdentifiableTransaction for SaltEdgeTransaction {
+impl RealTransaction for SaltEdgeTransaction {
     fn get_id(&self) -> Cow<str> {
         Cow::Borrowed(&self.id)
     }
@@ -47,19 +47,13 @@ impl IdentifiableTransaction for SaltEdgeTransaction {
         // TODO: Write custom deserializer
         NaiveDate::parse_from_str(&self.made_on, DATE_FMT).unwrap()
     }
-}
 
-impl DefaultPostingTransaction for SaltEdgeTransaction {
-    fn get_amount(&self) -> Decimal {
-        self.amount
+    fn get_default_amount_field_name(&self) -> &str {
+        "amount"
     }
 
-    fn get_currency(&self) -> &str {
-        self.currency_code.as_str()
-    }
-
-    fn get_account(&self) -> &str {
-        "Assets:Cash:ING"
+    fn get_default_currency_field_name(&self) -> &str {
+        "currency_code"
     }
 }
 

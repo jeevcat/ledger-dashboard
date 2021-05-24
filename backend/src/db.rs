@@ -48,14 +48,14 @@ impl Database {
         self.rules.save().unwrap();
     }
 
-    pub fn get_all_rules(&self, import_account: Option<&str>) -> Vec<Rule> {
+    pub fn get_all_rules(&self, filter_by_importer_id: Option<&str>) -> Vec<Rule> {
         self.rules
             .read(|db| {
                 let mut rules: Vec<Rule> = db
                     .iter()
                     .filter_map(|(_, rule)| {
-                        if let Some(acc) = import_account {
-                            if !rule.import_account.eq(acc) {
+                        if let Some(filter_by_importer_id) = filter_by_importer_id {
+                            if !rule.importer_id.eq(filter_by_importer_id) {
                                 return None;
                             }
                         }

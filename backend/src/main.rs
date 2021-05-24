@@ -14,6 +14,9 @@ mod saltedge;
 mod templater;
 mod transactions;
 
+#[cfg(test)]
+mod test_statics;
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();

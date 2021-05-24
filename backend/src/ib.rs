@@ -10,11 +10,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_reader;
 
-use crate::{
-    config,
-    import_account::ImportAccount,
-    model::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction},
-};
+use crate::{config, import_account::ImportAccount, model::real_transaction::RealTransaction};
 
 const DATE_FMT: &str = "%Y%m%d;%H%M%S";
 const MAX_RETRIES: u32 = 10;
@@ -137,7 +133,7 @@ pub enum IbTransaction {
     Trade(Trade),
 }
 
-impl IdentifiableTransaction for IbTransaction {
+impl RealTransaction for IbTransaction {
     fn get_id(&self) -> std::borrow::Cow<str> {
         match self {
             IbTransaction::Cash(c) => c.transaction_id.as_str().into(),
@@ -151,18 +147,13 @@ impl IdentifiableTransaction for IbTransaction {
             IbTransaction::Trade(t) => ib_date(&t.date_time),
         }
     }
-}
-impl DefaultPostingTransaction for IbTransaction {
-    fn get_amount(&self) -> Decimal {
-        Decimal::ZERO
+
+    fn get_default_amount_field_name(&self) -> &str {
+        "amount"
     }
 
-    fn get_currency(&self) -> &str {
-        "FAKE"
-    }
-
-    fn get_account(&self) -> &str {
-        "FAKE:ACCOUNT"
+    fn get_default_currency_field_name(&self) -> &str {
+        "currency"
     }
 }
 
@@ -282,6 +273,10 @@ impl ImportAccount for Ib {
     fn get_hledger_account(&self) -> &str {
         "Assets:Investments:IB"
     }
+
+    fn get_id(&self) -> &str {
+        "ib"
+    }
 }
 
 #[cfg(test)]
@@ -311,6 +306,7 @@ mod tests {
     }
 
     #[actix_rt::test]
+    #[ignore = "Contacts external service"]
     async fn check_get_transactions() {
         dotenv::dotenv().ok();
         get_transactions().await;

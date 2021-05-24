@@ -5,21 +5,21 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::real_transaction::{DefaultPostingTransaction, IdentifiableTransaction};
+use super::real_transaction::RealTransaction;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct N26Transaction {
     id: String,
-    amount: Decimal,
-    currency_code: String,
+    pub amount: Decimal,
+    pub currency_code: String,
     #[serde(rename = "visibleTS")]
     visible_ts: i64,
     #[serde(flatten)]
     extra: Map<String, Value>,
 }
 
-impl IdentifiableTransaction for N26Transaction {
+impl RealTransaction for N26Transaction {
     fn get_id(&self) -> Cow<str> {
         Cow::Borrowed(&self.id)
     }
@@ -29,18 +29,12 @@ impl IdentifiableTransaction for N26Transaction {
         let s: i64 = self.visible_ts / 1000i64;
         NaiveDateTime::from_timestamp(s, 0).date()
     }
-}
 
-impl DefaultPostingTransaction for N26Transaction {
-    fn get_amount(&self) -> Decimal {
-        self.amount
+    fn get_default_amount_field_name(&self) -> &str {
+        "amount"
     }
 
-    fn get_currency(&self) -> &str {
-        self.currency_code.as_str()
-    }
-
-    fn get_account(&self) -> &str {
-        "Assets:Cash:N26"
+    fn get_default_currency_field_name(&self) -> &str {
+        "currencyCode"
     }
 }

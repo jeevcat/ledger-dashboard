@@ -4,6 +4,7 @@ use rust_decimal::Decimal;
 
 use crate::{
     hledger::Hledger,
+    import_account::ImportAccount,
     model::{
         hledger_transaction::HledgerTransaction,
         real_transaction::RealTransaction,
@@ -14,7 +15,7 @@ use crate::{
 };
 
 pub async fn get_existing_transactions<J, K>(
-    import_hledger_accounts: &[&str],
+    import_account: &impl ImportAccount,
     hledger: &Hledger,
     real_transactions: J,
 ) -> Vec<ExistingTransactionResponse>
@@ -27,12 +28,13 @@ where
         .map(move |t| (t.get_id().to_string(), t))
         .collect();
 
+    let import_hledger_account = import_account.get_hledger_account();
+
+    // TODO fix this account array stuff
+    let import_hledger_accounts = &[import_hledger_account];
     let hledger_transactions = hledger
         .fetch_account_transactions(import_hledger_accounts)
         .await;
-
-    // TODO fix this account array stuff
-    let import_hledger_account = import_hledger_accounts[0];
 
     // Collect unique ids so we can check for duplicates
     let mut distinct_recorded_ids = HashMap::<&str, u8>::new();
@@ -71,7 +73,11 @@ where
             if let Some(id) = id {
                 real = real_transactions.get(id);
                 if let Some(real) = real {
-                    *r_sum -= real.get_amount(import_hledger_account);
+                    if let Some(amount) =
+                        real.get_field::<Decimal>(real.get_default_amount_field_name())
+                    {
+                        *r_sum -= amount;
+                    }
                 }
             }
             Some(((h, real), (*h_sum, *r_sum)))
@@ -83,23 +89,18 @@ where
                 hledger_transaction: h.to_owned(),
                 real_cumulative,
                 hledger_cumulative: recorded_cumulative,
-                errors: get_errors(import_hledger_account, &distinct_recorded_ids, &r, &h),
+                errors: get_errors(import_account, &distinct_recorded_ids, &r, &h),
             }
         })
         .collect()
 }
 
-pub fn get_generated_transactions<'a, ReaIter, Rea>(
+pub fn get_generated_transactions(
     import_hledger_account: &str,
     hledger_transactions: &[HledgerTransaction],
-    real_transactions: ReaIter,
+    real_transactions: &[impl RealTransaction],
     rules: &[Rule],
-) -> Vec<TransactionResponse>
-where
-    ReaIter: IntoIterator<Item = &'a Rea>,
-    Rea: RealTransaction,
-    Rea: 'a,
-{
+) -> Vec<TransactionResponse> {
     let templater = Templater::from_rules(rules);
 
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
@@ -109,7 +110,7 @@ where
         .collect();
 
     real_transactions
-        .into_iter()
+        .iter()
         // Only real transactions which haven't already been recorded
         .filter(|real| !recorded_ids.contains(&*real.get_id()))
         // Apply any matching rules to the real transactions
@@ -126,11 +127,12 @@ where
 }
 
 fn get_errors(
-    import_hledger_account: &str,
+    import_account: &impl ImportAccount,
     distinct_recorded_ids: &HashMap<&str, u8>,
     real_transaction: &Option<&impl RealTransaction>,
     hledger_transaction: &HledgerTransaction,
 ) -> Vec<String> {
+    let import_hledger_account = import_account.get_hledger_account();
     let mut errors: Vec<String> = hledger_transaction
         .get_all_ids(import_hledger_account)
         .filter_map(|id| {
@@ -145,11 +147,13 @@ fn get_errors(
         .flatten()
         .collect();
     if let Some(r) = real_transaction {
-        let amount: Decimal = hledger_transaction
+        let hledger_amount: Decimal = hledger_transaction
             .get_amount(Some(&r.get_id()), import_hledger_account)
             .unwrap();
-        if amount != r.get_amount(import_hledger_account) {
-            errors.push("Amounts don't match".to_string());
+        if let Some(real_amount) = r.get_field(r.get_default_amount_field_name()) {
+            if hledger_amount != real_amount {
+                errors.push("Amounts don't match".to_string());
+            }
         }
         let h_date = hledger_transaction.get_date(Some(import_hledger_account));
         if h_date != r.get_date() {
@@ -169,67 +173,24 @@ fn get_errors(
 #[cfg(test)]
 mod tests {
     use chrono::Datelike;
-    use lazy_static::lazy_static;
-    use regex::Regex;
+    use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::get_generated_transactions;
-    use crate::model::{
-        hledger_transaction::HledgerTransaction, n26_transaction::N26Transaction,
-        real_transaction::IdentifiableTransaction, rule::Rule,
+    use crate::{
+        model::real_transaction::RealTransaction,
+        test_statics::{ASSET_ACCOUNT, EXPENSE_ACCOUNT, REAL, RECORDED, RULES},
     };
-
-    lazy_static! {
-        static ref RULES: Vec<Rule> = vec![Rule {
-            match_field_name: "partnerName".to_string(),
-            match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            target_account: "Expenses:Personal:Fun".to_string(),
-            description_template: "Test {{{partnerName}}} with {{{referenceText}}}".to_string(),
-            ..Rule::default()
-        }];
-        static ref REAL: Vec<N26Transaction> = serde_json::from_str(
-            r#"[
-            {
-                "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
-                "amount": 219.56,
-                "currencyCode": "EUR",
-                "visibleTS": 1597308032422,
-                "partnerName": "Amazon",
-                "referenceText": "Buy item 1"
-            },
-            {
-                "id": "b33d6f8f-733c-4bf8-bef5-206cb3c27171",
-                "amount": 123.45,
-                "currencyCode": "EUR",
-                "visibleTS": 1597308032422,
-                "partnerName": "Supermarket",
-                "referenceText": "Buy item 2"
-            },
-            {
-                "id": "02946eaf-8320-4d2d-b44c-54c473771e68",
-                "amount": 3,
-                "currencyCode": "USD",
-                "visibleTS": 1597308032422,
-                "partnerName": "Amazon",
-                "referenceText": "Buy item 3"
-            }
-        ]"#,
-        )
-        .unwrap();
-        static ref RECORDED: Vec<HledgerTransaction> = vec![HledgerTransaction::new_with_postings(
-            &REAL[0],
-            "My Description",
-            "Expenses:Personal:Test"
-        )];
-    }
 
     #[test]
     fn generated() {
-        let account = "Assets:Cash:N26";
-        let gen = get_generated_transactions(account, &*RECORDED, &*REAL, &*RULES);
+        let gen = get_generated_transactions(ASSET_ACCOUNT, &*RECORDED, &*REAL, &*RULES);
         // 1st item is filtered as already recorded, 2nd item doesn't match rule
         assert_eq!(gen.len(), 1);
         let gen = &gen[0];
         let t = gen.hledger_transaction.as_ref().unwrap();
+
+        println!("{:#?}", t);
+
         assert_eq!(gen.rule.as_ref().unwrap().id, RULES[0].id);
         assert_eq!(
             gen.real_transaction.as_object().unwrap()["id"]
@@ -244,7 +205,9 @@ mod tests {
         assert_eq!(date.day(), 13);
         assert_eq!(t.ttags[0][0], "uuid");
         assert_eq!(t.ttags[0][1], REAL[2].get_id());
-        assert_eq!(t.tpostings[0].paccount, account);
-        assert_eq!(t.tpostings[1].paccount, "Expenses:Personal:Fun");
+        assert_eq!(t.tpostings[0].paccount, ASSET_ACCOUNT);
+        assert_eq!(t.tpostings[1].paccount, EXPENSE_ACCOUNT);
+        assert_eq!(t.get_amount(None, ASSET_ACCOUNT), Decimal::from_f64(-3.));
+        assert_eq!(t.get_amount(None, EXPENSE_ACCOUNT), Decimal::from_f64(3.));
     }
 }

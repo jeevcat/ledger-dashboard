@@ -20,7 +20,7 @@ use crate::{
     import_account::ImportAccount,
     model::{
         n26_accounts::N26Accounts, n26_transaction::N26Transaction,
-        real_transaction::IdentifiableTransaction, token_data::TokenData,
+        real_transaction::RealTransaction, token_data::TokenData,
     },
 };
 
@@ -224,7 +224,7 @@ impl N26 {
 impl ImportAccount for N26 {
     type RealTransactionType = N26Transaction;
 
-    async fn get_transactions(&self) -> Vec<Self::RealTransactionType> {
+    async fn get_transactions(&self) -> Vec<N26Transaction> {
         let start = Instant::now();
         let token = self.get_token().await;
         let from = NaiveDate::from_ymd(2019, 1, 1).and_hms(0, 0, 0);
@@ -246,6 +246,10 @@ impl ImportAccount for N26 {
 
     fn get_hledger_account(&self) -> &str {
         N26_ACCOUNT
+    }
+
+    fn get_id(&self) -> &str {
+        "n26"
     }
 }
 

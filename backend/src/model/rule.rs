@@ -4,19 +4,32 @@ use serde::{Deserialize, Serialize};
 use super::{hledger_transaction::HledgerTransaction, real_transaction::RealTransaction};
 use crate::templater::Templater;
 
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+#[serde(rename_all = "camelCase")]
+pub struct RulePosting {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount_field_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency_field_name: Option<String>,
+    pub account: String,
+    // Should the amount be negated?
+    pub negate: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
     pub id: u32,
     pub priority: i32,
+    pub importer_id: String,
     pub rule_name: String,
     pub match_field_name: String,
     #[serde(with = "serde_regex")]
     pub match_field_regex: Regex,
-    pub import_account: String,
-    pub target_account: String,
     pub description_template: String,
+    pub postings: Vec<RulePosting>,
 }
 
 impl Default for Rule {
@@ -24,12 +37,12 @@ impl Default for Rule {
         Rule {
             id: Default::default(),
             priority: Default::default(),
+            importer_id: Default::default(),
             rule_name: Default::default(),
             match_field_name: Default::default(),
             match_field_regex: Regex::new("$^").unwrap(),
-            import_account: Default::default(),
-            target_account: Default::default(),
             description_template: Default::default(),
+            postings: Default::default(),
         }
     }
 }
@@ -43,7 +56,7 @@ impl Rule {
         false
     }
 
-    // Map fields in n26transaction to new transaction
+    // Map fields in real transaction to new hledger transaction
     pub fn apply(
         &self,
         templater: &Templater,
@@ -54,7 +67,7 @@ impl Rule {
         }
         let description = templater
             .render_description_from_rule(self, real_transaction)
-            .unwrap_or_default();
+            .ok()?;
 
         Some(
             HledgerTransaction::new(
@@ -62,25 +75,30 @@ impl Rule {
                 real_transaction.get_date(),
                 &real_transaction.get_id(),
             )
-            .postings(&mut real_transaction.get_postings(&self.target_account)),
+            .postings(&mut real_transaction.get_postings(&self.postings)),
         )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use chrono::Datelike;
     use lazy_static::lazy_static;
     use regex::Regex;
 
     use super::*;
-    use crate::model::{n26_transaction::N26Transaction, rule::Rule};
+    use crate::model::{
+        n26_transaction::N26Transaction,
+        rule::{Rule, RulePosting},
+    };
 
     lazy_static! {
         static ref TRANSACTION: N26Transaction = serde_json::from_str(
             r#"{
                 "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
-                "amount": 219.56,
+                "amount": -219.56,
                 "currencyCode": "EUR",
                 "visibleTS": 1597308032422,
                 "partnerName": "Amazon deals"
@@ -90,7 +108,20 @@ mod tests {
         static ref RULE: Rule = Rule {
             match_field_name: "partnerName".to_string(),
             match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            target_account: "Expenses:Personal:Entertainment".to_string(),
+            postings: vec![
+                RulePosting {
+                    amount_field_name: Some("amount".to_string()),
+                    currency_field_name: Some("currencyCode".to_string()),
+                    account: "Assets:Cash:N26".to_string(),
+                    negate: false,
+                },
+                RulePosting {
+                    amount_field_name: Some("amount".to_string()),
+                    currency_field_name: Some("currencyCode".to_string()),
+                    account: "Expenses:Personal:Entertainment".to_string(),
+                    negate: true,
+                }
+            ],
             description_template: "Test description for {{{partnerName}}}".to_string(),
             ..Rule::default()
         };

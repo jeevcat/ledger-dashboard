@@ -13,9 +13,8 @@ use crate::{
     hledger::Hledger,
     import_account::ImportAccount,
     model::{
-        hledger_transaction::HledgerTransaction, real_transaction::IdentifiableTransaction,
-        rule::Rule, transaction_request::TransactionRequest,
-        transaction_response::TransactionResponse,
+        hledger_transaction::HledgerTransaction, real_transaction::RealTransaction, rule::Rule,
+        transaction_request::TransactionRequest, transaction_response::TransactionResponse,
     },
     templater::Templater,
     transactions,
@@ -33,10 +32,9 @@ where
     let real_transactions = import_account.get_transactions().await;
 
     // Get recorded transactions
-    let account_names = [import_account.get_hledger_account()];
-
     let existing =
-        transactions::get_existing_transactions(&account_names, &hledger, real_transactions).await;
+        transactions::get_existing_transactions(&***import_account, &hledger, real_transactions)
+            .await;
 
     HttpResponse::Ok().json(existing)
 }
@@ -165,7 +163,7 @@ pub async fn generate_single_transaction(
             let transaction = HledgerTransaction::new_with_postings(
                 &request.source_transaction,
                 &description,
-                &request.account,
+                &request.postings,
             );
             if request.should_write.unwrap_or(false) {
                 hledger.write_single_transaction(&transaction).await;
@@ -239,5 +237,5 @@ where
 }
 
 fn get_rules(db: &Database, import_account: &impl ImportAccount) -> Vec<Rule> {
-    db.get_all_rules(Some(import_account.get_hledger_account()))
+    db.get_all_rules(Some(import_account.get_id()))
 }

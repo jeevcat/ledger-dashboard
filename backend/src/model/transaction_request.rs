@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    n26_transaction::N26Transaction,
-    real_transaction::{DefaultPostingTransaction, IdentifiableTransaction},
+    n26_transaction::N26Transaction, real_transaction::RealTransaction, rule::RulePosting,
     saltedge_transaction::SaltEdgeTransaction,
 };
 use crate::ib::IbTransaction;
@@ -15,7 +14,7 @@ pub enum SourceTransaction {
     Ib(IbTransaction),
 }
 
-impl IdentifiableTransaction for SourceTransaction {
+impl RealTransaction for SourceTransaction {
     fn get_id(&self) -> std::borrow::Cow<str> {
         match self {
             SourceTransaction::N26(t) => t.get_id(),
@@ -31,30 +30,20 @@ impl IdentifiableTransaction for SourceTransaction {
             SourceTransaction::Ib(t) => t.get_date(),
         }
     }
-}
 
-impl DefaultPostingTransaction for SourceTransaction {
-    fn get_amount(&self) -> rust_decimal::Decimal {
+    fn get_default_amount_field_name(&self) -> &str {
         match self {
-            SourceTransaction::N26(t) => t.get_amount(),
-            SourceTransaction::SaltEdge(t) => t.get_amount(),
-            SourceTransaction::Ib(t) => t.get_amount(),
+            SourceTransaction::N26(t) => t.get_default_amount_field_name(),
+            SourceTransaction::SaltEdge(t) => t.get_default_amount_field_name(),
+            SourceTransaction::Ib(t) => t.get_default_amount_field_name(),
         }
     }
 
-    fn get_currency(&self) -> &str {
+    fn get_default_currency_field_name(&self) -> &str {
         match self {
-            SourceTransaction::N26(t) => t.get_currency(),
-            SourceTransaction::SaltEdge(t) => t.get_currency(),
-            SourceTransaction::Ib(t) => t.get_currency(),
-        }
-    }
-
-    fn get_account(&self) -> &str {
-        match self {
-            SourceTransaction::N26(t) => t.get_account(),
-            SourceTransaction::SaltEdge(t) => t.get_account(),
-            SourceTransaction::Ib(t) => t.get_account(),
+            SourceTransaction::N26(t) => t.get_default_currency_field_name(),
+            SourceTransaction::SaltEdge(t) => t.get_default_currency_field_name(),
+            SourceTransaction::Ib(t) => t.get_default_currency_field_name(),
         }
     }
 }
@@ -62,8 +51,8 @@ impl DefaultPostingTransaction for SourceTransaction {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionRequest {
-    pub account: String,
     pub description_template: String,
     pub source_transaction: SourceTransaction,
+    pub postings: Vec<RulePosting>,
     pub should_write: Option<bool>,
 }
