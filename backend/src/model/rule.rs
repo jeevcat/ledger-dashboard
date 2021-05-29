@@ -82,57 +82,21 @@ impl Rule {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use chrono::Datelike;
-    use lazy_static::lazy_static;
     use regex::Regex;
 
     use super::*;
-    use crate::model::{
-        n26_transaction::N26Transaction,
-        rule::{Rule, RulePosting},
+    use crate::{
+        model::rule::Rule,
+        test_statics::{REAL, RULES},
     };
-
-    lazy_static! {
-        static ref TRANSACTION: N26Transaction = serde_json::from_str(
-            r#"{
-                "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
-                "amount": -219.56,
-                "currencyCode": "EUR",
-                "visibleTS": 1597308032422,
-                "partnerName": "Amazon deals"
-            }"#,
-        )
-        .unwrap();
-        static ref RULE: Rule = Rule {
-            match_field_name: "partnerName".to_string(),
-            match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            postings: vec![
-                RulePosting {
-                    amount_field_name: Some("amount".to_string()),
-                    currency_field_name: Some("currencyCode".to_string()),
-                    account: "Assets:Cash:N26".to_string(),
-                    negate: false,
-                },
-                RulePosting {
-                    amount_field_name: Some("amount".to_string()),
-                    currency_field_name: Some("currencyCode".to_string()),
-                    account: "Expenses:Personal:Entertainment".to_string(),
-                    negate: true,
-                }
-            ],
-            description_template: "Test description for {{{partnerName}}}".to_string(),
-            ..Rule::default()
-        };
-    }
 
     #[test]
     fn apply_rule() {
         let mut templater = Templater::new();
-        templater.register_rule(&RULE).unwrap();
-        let t = RULE.apply(&templater, &*TRANSACTION).unwrap();
-        assert_eq!(t.tdescription, "Test description for Amazon deals");
+        templater.register_rule(&RULES[0]).unwrap();
+        let t = RULES[0].apply(&templater, &REAL[0]).unwrap();
+        assert_eq!(t.tdescription, "Test Amazon with Buy item 1");
         let date = t.get_date(None);
         assert_eq!(date.year(), 2020);
         assert_eq!(date.month(), 8);
@@ -151,7 +115,7 @@ mod tests {
         };
         let mut templater = Templater::new();
         templater.register_rule(&rule).unwrap();
-        let t = rule.apply(&templater, &*TRANSACTION);
+        let t = rule.apply(&templater, &REAL[0]);
         assert!(t.is_none());
     }
 }

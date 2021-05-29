@@ -67,43 +67,15 @@ pub trait RealTransaction: Serialize {
 
 #[cfg(test)]
 mod tests {
-    use lazy_static::lazy_static;
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::RealTransaction;
-    use crate::model::{n26_transaction::N26Transaction, rule::RulePosting};
-
-    lazy_static! {
-        static ref TRANSACTION: N26Transaction = serde_json::from_str(
-            r#"{
-                "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
-                "amount": -219.56,
-                "currencyCode": "EUR",
-                "visibleTS": 1597308032422,
-                "partnerName": "Amazon deals"
-            }"#,
-        )
-        .unwrap();
-        static ref RULE_POSTINGS: Vec<RulePosting> = vec![
-            RulePosting {
-                amount_field_name: Some("amount".to_string()),
-                currency_field_name: Some("currencyCode".to_string()),
-                account: "Assets:Cash:N26".to_string(),
-                negate: false,
-            },
-            RulePosting {
-                amount_field_name: Some("amount".to_string()),
-                currency_field_name: Some("currencyCode".to_string()),
-                account: "Expenses:Personal:Entertainment".to_string(),
-                negate: true,
-            }
-        ];
-    }
+    use crate::test_statics::{REAL, RULES};
 
     #[test]
     fn check_get_amount() {
         assert_eq!(
-            TRANSACTION.get_amount(&RULE_POSTINGS[0]),
+            REAL[0].get_amount(&RULES[0].postings[0]),
             Decimal::from_f64(-219.56)
         );
     }
@@ -111,8 +83,8 @@ mod tests {
     #[test]
     fn check_get_currency() {
         assert_eq!(
-            TRANSACTION
-                .get_currency(&RULE_POSTINGS[0])
+            REAL[0]
+                .get_currency(&RULES[0].postings[0])
                 .unwrap()
                 .as_str(),
             "EUR"
@@ -121,7 +93,7 @@ mod tests {
 
     #[test]
     fn check_get_postings() {
-        let postings = TRANSACTION.get_postings(&RULE_POSTINGS);
+        let postings = REAL[0].get_postings(&RULES[0].postings);
         println!("{:#?}", postings);
     }
 }

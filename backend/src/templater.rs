@@ -59,66 +59,24 @@ impl<'a> Templater<'a> {
 
 #[cfg(test)]
 mod tests {
-    use lazy_static::lazy_static;
-    use regex::Regex;
-
     use super::*;
-    use crate::model::{
-        n26_transaction::N26Transaction,
-        rule::{Rule, RulePosting},
-    };
-
-    lazy_static! {
-        static ref TRANSACTION: N26Transaction = serde_json::from_str(
-            r#"{
-                "id": "1fc7d65c-de7c-415f-bf17-94de40c2e5d2",
-                "amount": -219.56,
-                "currencyCode": "EUR",
-                "visibleTS": 1597308032422,
-                "partnerName": "Amazon deals"
-            }"#,
-        )
-        .unwrap();
-        static ref RULE: Rule = Rule {
-            match_field_name: "partnerName".to_string(),
-            match_field_regex: Regex::new("(?i)amazon").unwrap(),
-            postings: vec![
-                RulePosting {
-                    amount_field_name: Some("amount".to_string()),
-                    currency_field_name: Some("currencyCode".to_string()),
-                    account: "Assets:Cash:N26".to_string(),
-                    negate: false,
-                },
-                RulePosting {
-                    amount_field_name: Some("amount".to_string()),
-                    currency_field_name: Some("currencyCode".to_string()),
-                    account: "Expenses:Personal:Entertainment".to_string(),
-                    negate: true,
-                }
-            ],
-            description_template: "Test description for {{{partnerName}}}".to_string(),
-            ..Rule::default()
-        };
-    }
+    use crate::test_statics::{REAL, RULES};
 
     #[test]
     fn render_description_from_rule() {
         let mut templater = Templater::new();
-        templater.register_rule(&RULE).unwrap();
+        templater.register_rule(&RULES[0]).unwrap();
         let desc = templater
-            .render_description_from_rule(&RULE, &*TRANSACTION)
+            .render_description_from_rule(&RULES[0], &REAL[0])
             .unwrap();
-        assert_eq!(&desc, "Test description for Amazon deals");
+        assert_eq!(&desc, "Test Amazon with Buy item 1");
     }
 
     #[test]
     fn render_description() {
         let templater = Templater::new();
         let desc = templater
-            .render_description(
-                "Transaction with {{{amount}}} {{{currencyCode}}}",
-                &*TRANSACTION,
-            )
+            .render_description("Transaction with {{{amount}}} {{{currencyCode}}}", &REAL[0])
             .unwrap();
         assert_eq!(&desc, "Transaction with -219.56 EUR");
     }
