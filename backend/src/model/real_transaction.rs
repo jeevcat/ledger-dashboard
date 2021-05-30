@@ -12,11 +12,19 @@ pub trait RealTransaction: Serialize {
     fn get_default_amount_field_name(&self) -> &str;
     fn get_default_currency_field_name(&self) -> &str;
 
-    fn get_postings(&self, postings: &[RulePosting]) -> Vec<Posting> {
-        postings
-            .iter()
-            .filter_map(|posting| self.create_posting(posting))
-            .collect()
+    fn get_postings(&self, hledger_account: &str, postings: &[RulePosting]) -> Vec<Posting> {
+        std::iter::once(
+            // Add default posting rule
+            &RulePosting {
+                amount_field_name: None,
+                currency_field_name: None,
+                account: hledger_account.to_string(),
+                negate: false,
+            },
+        )
+        .chain(postings.iter())
+        .filter_map(|posting| self.create_posting(posting))
+        .collect()
     }
 
     fn to_json_value(&self) -> serde_json::Value {
@@ -60,7 +68,6 @@ pub trait RealTransaction: Serialize {
         let amount = self.get_amount(rule_posting)?;
         let amount = if rule_posting.negate { -amount } else { amount };
         let commodity = self.get_currency(rule_posting)?;
-        println!("{:#?} {:#?}", amount, commodity);
         Some(Posting::new(&rule_posting.account, &commodity, amount))
     }
 }
@@ -70,7 +77,7 @@ mod tests {
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::RealTransaction;
-    use crate::test_statics::{REAL, RULES};
+    use crate::test_statics::{ASSET_ACCOUNT, REAL, RULES};
 
     #[test]
     fn check_get_amount() {
@@ -93,7 +100,8 @@ mod tests {
 
     #[test]
     fn check_get_postings() {
-        let postings = REAL[0].get_postings(&RULES[0].postings);
+        let postings = REAL[0].get_postings(ASSET_ACCOUNT, &RULES[0].postings);
+        // TODO: do asserts
         println!("{:#?}", postings);
     }
 }

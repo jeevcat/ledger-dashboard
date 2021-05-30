@@ -152,16 +152,21 @@ where
     HttpResponse::Ok().json(unmatched)
 }
 
-pub async fn generate_single_transaction(
+pub async fn generate_single_transaction<T>(
+    import_account: web::Data<Arc<T>>,
     request: web::Json<TransactionRequest>,
     hledger: web::Data<Arc<Hledger>>,
-) -> HttpResponse {
+) -> HttpResponse
+where
+    T: ImportAccount,
+{
     let description = Templater::new()
         .render_description(&request.description_template, &request.source_transaction);
     match description {
         Ok(description) => {
             let transaction = HledgerTransaction::new_with_postings(
                 &request.source_transaction,
+                import_account.get_hledger_account(),
                 &description,
                 &request.postings,
             );
@@ -174,12 +179,12 @@ pub async fn generate_single_transaction(
     }
 }
 
-pub async fn get_transaction_stats<T>(n26: web::Data<Arc<T>>) -> HttpResponse
+pub async fn get_transaction_stats<T>(import_account: web::Data<Arc<T>>) -> HttpResponse
 where
     T: ImportAccount,
 {
     // Get real transactions
-    let real_transactions = n26.get_transactions().await;
+    let real_transactions = import_account.get_transactions().await;
     let mut fields_map = HashMap::<String, BTreeMap<String, u32>>::new();
     for t in real_transactions.iter() {
         for (key, value) in t.to_json_value().as_object().unwrap().iter() {

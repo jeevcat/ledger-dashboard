@@ -91,7 +91,7 @@ const EditRuleModal: React.FC<Props> = ({ rule: initialRule, error, onSave }) =>
           {ruleInput("matchFieldRegex", error)}
           <LedgerAccountsDropdown
             label="Target account"
-            account={rule.targetAccount}
+            account={rule.postings[0].account}
             onEdit={(newAccount: string) => setRule((prev) => ({ ...prev, targetAccount: newAccount }))}
           />
           {ruleInput("descriptionTemplate")}

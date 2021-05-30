@@ -1,8 +1,9 @@
 import { RealTransaction } from "./ImportRow";
+import { RulePosting } from "./Rule";
 
 export interface TransactionRequest {
-  account: string;
   descriptionTemplate: string;
   sourceTransaction: RealTransaction;
+  postings: RulePosting[];
   shouldWrite?: boolean;
 }

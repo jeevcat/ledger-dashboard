@@ -5,16 +5,26 @@ use super::{hledger_transaction::HledgerTransaction, real_transaction::RealTrans
 use crate::templater::Templater;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-#[serde(default)]
 #[serde(rename_all = "camelCase")]
 pub struct RulePosting {
+    /// If None, the amount field is determined via RealTransaction::get_default_amount_field_name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amount_field_name: Option<String>,
+    /// If None, the currency field is determined via RealTransaction::get_default_currency_field_name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency_field_name: Option<String>,
     pub account: String,
-    // Should the amount be negated?
+    /// Should the amount be negated?
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
     pub negate: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn is_true(boolean: &bool) -> bool {
+    *boolean
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -60,6 +70,7 @@ impl Rule {
     pub fn apply(
         &self,
         templater: &Templater,
+        hledger_account: &str,
         real_transaction: &impl RealTransaction,
     ) -> Option<HledgerTransaction> {
         if !self.matches(real_transaction) {
@@ -75,7 +86,7 @@ impl Rule {
                 real_transaction.get_date(),
                 &real_transaction.get_id(),
             )
-            .postings(&mut real_transaction.get_postings(&self.postings)),
+            .postings(&mut real_transaction.get_postings(hledger_account, &self.postings)),
         )
     }
 }
@@ -88,14 +99,14 @@ mod tests {
     use super::*;
     use crate::{
         model::rule::Rule,
-        test_statics::{REAL, RULES},
+        test_statics::{ASSET_ACCOUNT, REAL, RULES},
     };
 
     #[test]
     fn apply_rule() {
         let mut templater = Templater::new();
         templater.register_rule(&RULES[0]).unwrap();
-        let t = RULES[0].apply(&templater, &REAL[0]).unwrap();
+        let t = RULES[0].apply(&templater, ASSET_ACCOUNT, &REAL[0]).unwrap();
         assert_eq!(t.tdescription, "Test Amazon with Buy item 1");
         let date = t.get_date(None);
         assert_eq!(date.year(), 2020);
@@ -115,7 +126,7 @@ mod tests {
         };
         let mut templater = Templater::new();
         templater.register_rule(&rule).unwrap();
-        let t = rule.apply(&templater, &REAL[0]);
+        let t = rule.apply(&templater, ASSET_ACCOUNT, &REAL[0]);
         assert!(t.is_none());
     }
 }

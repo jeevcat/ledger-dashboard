@@ -96,7 +96,7 @@ where
 }
 
 pub fn get_generated_transactions(
-    import_hledger_account: &str,
+    hledger_account: &str,
     hledger_transactions: &[HledgerTransaction],
     real_transactions: &[impl RealTransaction],
     rules: &[Rule],
@@ -106,7 +106,7 @@ pub fn get_generated_transactions(
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
     let recorded_ids: HashSet<&str> = hledger_transactions
         .iter()
-        .flat_map(|t| t.get_all_ids(import_hledger_account))
+        .flat_map(|t| t.get_all_ids(hledger_account))
         .collect();
 
     real_transactions
@@ -116,11 +116,12 @@ pub fn get_generated_transactions(
         // Apply any matching rules to the real transactions
         .filter_map(|real| {
             rules.iter().find_map(|rule| {
-                rule.apply(&templater, real).map(|gen| TransactionResponse {
-                    real_transaction: real.to_json_value(),
-                    hledger_transaction: Some(gen),
-                    rule: Some(rule.to_owned()),
-                })
+                rule.apply(&templater, hledger_account, real)
+                    .map(|gen| TransactionResponse {
+                        real_transaction: real.to_json_value(),
+                        hledger_transaction: Some(gen),
+                        rule: Some(rule.to_owned()),
+                    })
             })
         })
         .collect()

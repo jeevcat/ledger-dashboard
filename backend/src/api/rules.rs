@@ -4,11 +4,7 @@ use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse
 use log::error;
 
 use crate::{
-    db::Database,
-    import_account::ImportAccount,
-    model::rule::{Rule, RulePosting},
-    n26::N26,
-    saltedge::SaltEdge,
+    db::Database, import_account::ImportAccount, model::rule::Rule, n26::N26, saltedge::SaltEdge,
 };
 
 pub fn rules_routes() -> impl HttpServiceFactory {
@@ -52,25 +48,11 @@ where
     HttpResponse::Ok().json(db.get_all_rules(Some(import_account.get_hledger_account())))
 }
 
-async fn rules_add<T>(
-    import_account: web::Data<Arc<T>>,
-    rule: web::Json<Rule>,
-    db: web::Data<Arc<Database>>,
-) -> HttpResponse
+async fn rules_add<T>(rule: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse
 where
     T: ImportAccount,
 {
-    let mut rule = rule.into_inner();
-    if rule.postings.is_empty() {
-        // Add default posting rule
-        rule.postings.push(RulePosting {
-            amount_field_name: None,
-            currency_field_name: None,
-            account: import_account.get_hledger_account().to_string(),
-            negate: false,
-        })
-    }
-    db.create_or_update_rule(rule);
+    db.create_or_update_rule(rule.into_inner());
     HttpResponse::Ok().finish()
 }
 

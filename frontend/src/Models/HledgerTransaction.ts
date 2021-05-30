@@ -50,7 +50,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
 export interface HledgerTransaction {
   tdescription: string;
   tdate: string;
-  ttags: string[][];
+  ttags?: string[][];
   tpostings?: Posting[];
 }
 
@@ -63,9 +63,11 @@ export const getAmount = (t: HledgerTransaction, account: string): FormattedAmou
 };
 
 export const getId = (t: HledgerTransaction): string | undefined => {
-  for (const tag of t.ttags) {
-    if (tag[0] === "uuid") {
-      return tag[1];
+  if (t.ttags) {
+    for (const tag of t.ttags) {
+      if (tag[0] === "uuid") {
+        return tag[1];
+      }
     }
   }
   for (const p of t.tpostings ?? []) {

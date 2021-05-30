@@ -22,7 +22,7 @@ const RuleComponent: React.FC<Props> = React.memo(({ rule, error, onSet, onDelet
       <Table.Cell>{rule.matchFieldName}</Table.Cell>
       <Table.Cell>{rule.matchFieldRegex}</Table.Cell>
       <Table.Cell>
-        <AccountName account={rule.targetAccount} />
+        <AccountName account={rule.postings[0].account} />
       </Table.Cell>
       <Table.Cell textAlign="center">
         <Button compact size="mini" icon="delete" negative onClick={(_) => onDelete(rule)} />

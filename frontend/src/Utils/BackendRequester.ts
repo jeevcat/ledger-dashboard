@@ -20,7 +20,8 @@ export const getUnmatchedTransactions = (account: ImportAccount): Promise<Transa
 
 export const writeGeneratedTransactions = (account: ImportAccount) => post(`transactions/write/${account.id}`);
 
-export const generateSingleTransaction = (request: TransactionRequest) => post("transactions/new", request);
+export const generateSingleTransaction = (account: ImportAccount, request: TransactionRequest) =>
+  post(`transactions/new/${account.id}`, request);
 
 export const getRules = (account: ImportAccount): Promise<Rule[]> => get(`rules/${account.id}`);
 

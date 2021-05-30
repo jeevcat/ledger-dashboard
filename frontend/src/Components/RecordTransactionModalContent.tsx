@@ -23,18 +23,16 @@ const RecordTransactionModalContent: React.FC<Props> = ({
   descriptionTemplate,
   onDescriptionTemplateChange,
 }) => {
-  const {
-    importAccount: { id: path },
-  } = useContext(AccountsContext);
+  const { importAccount } = useContext(AccountsContext);
 
   const [generatedTransaction, setGeneratedTransaction] = useState<HledgerTransaction | undefined>(undefined);
 
   useEffect(() => {
     setGeneratedTransaction(undefined);
-    generateSingleTransaction({
-      account,
+    generateSingleTransaction(importAccount, {
       descriptionTemplate,
       sourceTransaction: realTransaction,
+      postings: [{ account }],
       shouldWrite: false,
     })
       .catch((reason: any) => {
@@ -43,7 +41,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
       .then((response: HledgerTransaction) => {
         setGeneratedTransaction(response);
       });
-  }, [account, descriptionTemplate, realTransaction]);
+  }, [account, descriptionTemplate, importAccount, realTransaction]);
 
   return (
     <Modal.Content>
@@ -71,7 +69,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
           </Grid.Column>
           <Grid.Column>
             {generatedTransaction ? (
-              <GeneratedTransaction transaction={generatedTransaction} account={path} />
+              <GeneratedTransaction transaction={generatedTransaction} account={importAccount.id} />
             ) : (
               <Loader />
             )}

@@ -155,6 +155,7 @@ impl HledgerTransaction {
 
     pub fn new_with_postings<T>(
         real_transaction: &T,
+        hledger_account: &str,
         description: &str,
         postings: &[RulePosting],
     ) -> Self
@@ -166,15 +167,16 @@ impl HledgerTransaction {
             real_transaction.get_date(),
             &real_transaction.get_id(),
         )
-        .postings(&mut real_transaction.get_postings(postings))
+        .postings(&mut real_transaction.get_postings(hledger_account, postings))
     }
 
     /// Add posting
-    pub fn posting(mut self, posting: Posting) -> Self {
+    pub fn _posting(mut self, posting: Posting) -> Self {
         self.tpostings.push(posting);
         self
     }
 
+    // TODO: This mut vec stuff is ugly
     pub fn postings(mut self, posting: &mut Vec<Posting>) -> Self {
         self.tpostings.append(posting);
         self

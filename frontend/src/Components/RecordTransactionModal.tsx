@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import { Button, Icon, Modal } from "semantic-ui-react";
 import { RealTransaction } from "../Models/ImportRow";
+import { AccountsContext } from "../Utils/AccountsContext";
 import { generateSingleTransaction } from "../Utils/BackendRequester";
 import RecordTransactionModalContent from "./RecordTransactionModalContent";
 
@@ -10,14 +11,21 @@ interface Props {
 }
 
 const RecordTransactionModal: React.FC<Props> = ({ realTransaction, onWrite }) => {
+  const { importAccount } = useContext(AccountsContext);
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [account, setAccount] = useState("");
   const [descriptionTemplate, setDescriptionTemplate] = useState("{{description}}");
 
   const generateTransaction = useCallback(
     (shouldWrite: boolean) =>
-      generateSingleTransaction({ account, descriptionTemplate, sourceTransaction: realTransaction, shouldWrite }),
-    [account, descriptionTemplate, realTransaction]
+      generateSingleTransaction(importAccount, {
+        descriptionTemplate,
+        sourceTransaction: realTransaction,
+        postings: [{ account }],
+        shouldWrite,
+      }),
+    [account, descriptionTemplate, importAccount, realTransaction]
   );
 
   return (
@@ -31,6 +39,7 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, onWrite }) =
           }}
         />
       }
+      size="large"
       open={isOpen}
     >
       <Modal.Header>Record transaction</Modal.Header>

@@ -38,11 +38,16 @@ const Rules: React.FC<Props> = () => {
     const rule: Rule = {
       id: 0,
       priority: 100,
+      importerId: importAccount.id,
       ruleName: "NEW RULE",
       matchFieldName: "description",
-      targetAccount: "?",
       descriptionTemplate: "{{description}}",
       matchFieldRegex: "$^",
+      postings: [
+        {
+          account: "?",
+        },
+      ],
     };
     setRule(importAccount, rule).then(updateRules);
   };

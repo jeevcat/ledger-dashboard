@@ -1,10 +1,17 @@
 export interface Rule {
   id: number;
   priority: number;
+  importerId: string;
   ruleName: string;
-  descriptionTemplate: string;
   matchFieldName: string;
   matchFieldRegex: string;
-  importAccount?: string;
-  targetAccount: string;
+  descriptionTemplate: string;
+  postings: RulePosting[];
+}
+
+export interface RulePosting {
+  amountFieldName?: string;
+  currencyFieldName?: string;
+  account: string;
+  negate?: boolean;
 }
