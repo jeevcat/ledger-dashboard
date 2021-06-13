@@ -12,7 +12,8 @@ use serde_xml_rs::from_reader;
 
 use crate::{config, import_account::ImportAccount, model::real_transaction::RealTransaction};
 
-const DATE_FMT: &str = "%Y%m%d;%H%M%S";
+const DATETIME_FMT: &str = "%Y%m%d;%H%M%S";
+const DATE_FMT: &str = "%Y%m%d";
 const MAX_RETRIES: u32 = 10;
 const FIRST_RETRY_DELAY: u64 = 10;
 
@@ -127,7 +128,7 @@ struct CashReport {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum IbTransaction {
     Cash(CashTransaction),
     Trade(Trade),
@@ -149,7 +150,10 @@ impl RealTransaction for IbTransaction {
     }
 
     fn get_default_amount_field_name(&self) -> &str {
-        "amount"
+        match self {
+            IbTransaction::Cash(_) => "amount",
+            IbTransaction::Trade(_) => "tradeMoney",
+        }
     }
 
     fn get_default_currency_field_name(&self) -> &str {
@@ -255,7 +259,10 @@ async fn get_flex_statement(reference_code: &str, token: &str) -> FlexStatement 
 }
 
 fn ib_date(date_str: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(date_str, DATE_FMT).unwrap()
+    NaiveDate::parse_from_str(date_str, DATETIME_FMT).unwrap_or_else(|_| {
+        NaiveDate::parse_from_str(date_str, DATE_FMT)
+            .unwrap_or_else(|e| panic!("Couldn't parse {}. Error: {}", date_str, e))
+    })
 }
 
 #[async_trait]

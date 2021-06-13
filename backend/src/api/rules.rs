@@ -4,7 +4,8 @@ use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse
 use log::error;
 
 use crate::{
-    db::Database, import_account::ImportAccount, model::rule::Rule, n26::N26, saltedge::SaltEdge,
+    db::Database, ib::Ib, import_account::ImportAccount, model::rule::Rule, n26::N26,
+    saltedge::SaltEdge,
 };
 
 pub fn rules_routes() -> impl HttpServiceFactory {
@@ -21,8 +22,8 @@ pub fn rules_routes() -> impl HttpServiceFactory {
         )
         .service(
             web::resource("/ib")
-                .route(web::get().to(rules_get::<SaltEdge>))
-                .route(web::post().to(rules_add::<SaltEdge>)),
+                .route(web::get().to(rules_get::<Ib>))
+                .route(web::post().to(rules_add::<Ib>)),
         )
         // return json parsing errors
         .app_data(web::JsonConfig::default().error_handler(|err, _req| {

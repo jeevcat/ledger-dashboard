@@ -18,14 +18,18 @@ lazy_static! {
             RulePosting {
                 amount_field_name: Some("amount".to_string()),
                 currency_field_name: Some("currencyCode".to_string()),
+                price: None,
                 account: ASSET_ACCOUNT.to_string(),
                 negate: false,
+                comment: None,
             },
             RulePosting {
                 amount_field_name: Some("amount".to_string()),
                 currency_field_name: Some("currencyCode".to_string()),
+                price: None,
                 account: EXPENSE_ACCOUNT.to_string(),
                 negate: true,
+                comment: None,
             }
         ],
         description_template: "Test {{{partnerName}}} with {{{referenceText}}}".to_string(),
@@ -68,14 +72,18 @@ lazy_static! {
             RulePosting {
                 amount_field_name: Some("amount".to_string()),
                 currency_field_name: Some("currencyCode".to_string()),
+                price: None,
                 account: ASSET_ACCOUNT.to_string(),
-                negate: false
+                negate: false,
+                comment: None,
             },
             RulePosting {
                 amount_field_name: Some("amount".to_string()),
                 currency_field_name: Some("currencyCode".to_string()),
+                price: None,
                 account: EXPENSE_ACCOUNT.to_string(),
-                negate: true
+                negate: true,
+                comment: None,
             },
         ],
     )];

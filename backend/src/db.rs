@@ -44,7 +44,6 @@ impl Database {
                 })
                 .unwrap();
         }
-        info!("Writing rule {:#?}", &rule);
         self.rules.write(|db| db.insert(rule.id, rule)).unwrap();
         self.rules.save().unwrap();
     }

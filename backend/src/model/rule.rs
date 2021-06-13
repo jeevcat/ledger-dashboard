@@ -4,6 +4,13 @@ use serde::{Deserialize, Serialize};
 use super::{hledger_transaction::HledgerTransaction, real_transaction::RealTransaction};
 use crate::templater::Templater;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RulePostingPrice {
+    pub currency_field_name: String,
+    pub amount_field_name: String,
+}
+
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RulePosting {
@@ -13,10 +20,14 @@ pub struct RulePosting {
     /// If None, the currency field is determined via RealTransaction::get_default_currency_field_name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency_field_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price: Option<RulePostingPrice>,
     pub account: String,
     /// Should the amount be negated?
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     pub negate: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
 }
 
 fn default_true() -> bool {

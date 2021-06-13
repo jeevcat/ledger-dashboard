@@ -4,7 +4,10 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::{hledger_transaction::Posting, rule::RulePosting};
+use super::{
+    hledger_transaction::{Posting, Price},
+    rule::RulePosting,
+};
 
 pub trait RealTransaction: Serialize {
     fn get_id(&self) -> Cow<str>;
@@ -13,18 +16,26 @@ pub trait RealTransaction: Serialize {
     fn get_default_currency_field_name(&self) -> &str;
 
     fn get_postings(&self, hledger_account: &str, postings: &[RulePosting]) -> Vec<Posting> {
-        std::iter::once(
+        let mut result: Vec<Posting> = vec![];
+        if postings.len() < 2 {
             // Add default posting rule
-            &RulePosting {
+            if let Some(p) = self.create_posting(&RulePosting {
                 amount_field_name: None,
                 currency_field_name: None,
+                price: None,
+                comment: None,
                 account: hledger_account.to_string(),
                 negate: false,
-            },
-        )
-        .chain(postings.iter())
-        .filter_map(|posting| self.create_posting(posting))
-        .collect()
+            }) {
+                result.push(p);
+            }
+        }
+        result.extend(
+            postings
+                .iter()
+                .filter_map(|posting| self.create_posting(posting)),
+        );
+        result
     }
 
     fn to_json_value(&self) -> serde_json::Value {
@@ -68,7 +79,21 @@ pub trait RealTransaction: Serialize {
         let amount = self.get_amount(rule_posting)?;
         let amount = if rule_posting.negate { -amount } else { amount };
         let commodity = self.get_currency(rule_posting)?;
-        Some(Posting::new(&rule_posting.account, &commodity, amount))
+        let price = self.get_price(rule_posting);
+        Some(Posting::new(
+            &rule_posting.account,
+            &commodity,
+            amount,
+            price,
+            rule_posting.comment.as_deref(),
+        ))
+    }
+
+    fn get_price(&self, rule_posting: &RulePosting) -> Option<Price> {
+        let price = rule_posting.price.as_ref()?;
+        let commodity: String = self.get_field(&price.currency_field_name)?;
+        let quantity = self.get_field(&price.amount_field_name)?;
+        Some(Price::new(&commodity, quantity))
     }
 }
 

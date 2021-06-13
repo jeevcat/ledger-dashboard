@@ -40,9 +40,15 @@ impl From<&Quantity> for Decimal {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "contents")]
-enum Price {
+pub enum Price {
     UnitPrice(Amount),
     TotalPrice(Amount),
+}
+
+impl Price {
+    pub fn new(commodity: &str, quantity: Decimal) -> Self {
+        Self::UnitPrice(Amount::new(commodity, quantity))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,12 +66,32 @@ struct AmountStyle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Amount {
+pub struct Amount {
     aprice: Option<Box<Price>>,
     acommodity: String,
     aquantity: Quantity,
     aismultiplier: bool,
     astyle: AmountStyle,
+}
+
+impl Amount {
+    fn new(commodity: &str, quantity: Decimal) -> Self {
+        Self::new_priced(commodity, quantity, None)
+    }
+
+    fn new_priced(commodity: &str, quantity: Decimal, price: Option<Price>) -> Self {
+        Self {
+            acommodity: commodity.to_string(),
+            aquantity: quantity.into(),
+            aismultiplier: false,
+            astyle: AmountStyle {
+                ascommodityside: String::from("R"),
+                ascommodityspaced: true,
+                asprecision: Precision::Precision(2),
+            },
+            aprice: price.map(Box::new),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,29 +100,25 @@ pub struct Posting {
     pdate: Option<NaiveDate>,
     pamount: Vec<Amount>,
     pstatus: String,
-    pcomment: String,
+    pcomment: Option<String>,
     ptype: String,
     ptags: Vec<Vec<String>>,
 }
 
 impl Posting {
-    pub fn new(account: &str, commodity: &str, amount: Decimal) -> Self {
+    pub fn new(
+        account: &str,
+        commodity: &str,
+        amount: Decimal,
+        price: Option<Price>,
+        comment: Option<&str>,
+    ) -> Self {
         Self {
             paccount: account.to_string(),
             pdate: None,
-            pamount: vec![Amount {
-                acommodity: commodity.to_string(),
-                aquantity: amount.into(),
-                aismultiplier: false,
-                astyle: AmountStyle {
-                    ascommodityside: String::from("R"),
-                    ascommodityspaced: true,
-                    asprecision: Precision::Precision(2),
-                },
-                aprice: None,
-            }],
+            pamount: vec![Amount::new_priced(commodity, amount, price)],
             pstatus: String::from("Unmarked"),
-            pcomment: String::new(),
+            pcomment: comment.map(|c| c.to_string()),
             ptype: String::from("RegularPosting"),
             ptags: vec![],
         }
