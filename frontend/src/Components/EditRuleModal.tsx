@@ -8,12 +8,12 @@ import LedgerAccountsDropdown from "./LedgerAccountsDropdown";
 const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 
 interface Props {
-  rule: Rule;
+  initialRule: Rule;
   error?: string;
   onSave: (rule: Rule) => void;
 }
 
-const EditRuleModal: React.FC<Props> = ({ rule: initialRule, error, onSave }) => {
+const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
   const {
     importAccount: { defaultColumns: ruleFields },
   } = useContext(AccountsContext);
@@ -92,7 +92,12 @@ const EditRuleModal: React.FC<Props> = ({ rule: initialRule, error, onSave }) =>
           <LedgerAccountsDropdown
             label="Target account"
             account={rule.postings[0].account}
-            onEdit={(newAccount: string) => setRule((prev) => ({ ...prev, targetAccount: newAccount }))}
+            onEdit={(newAccount: string) =>
+              setRule((prev) => ({
+                ...prev,
+                postings: [{ ...prev.postings[0], account: newAccount }, ...prev.postings.slice(1)],
+              }))
+            }
           />
           {ruleInput("descriptionTemplate")}
         </Form>

@@ -45,7 +45,7 @@ async fn rules_get<T>(
 where
     T: ImportAccount,
 {
-    HttpResponse::Ok().json(db.get_all_rules(Some(import_account.get_hledger_account())))
+    HttpResponse::Ok().json(db.get_all_rules(Some(import_account.get_id())))
 }
 
 async fn rules_add<T>(rule: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse

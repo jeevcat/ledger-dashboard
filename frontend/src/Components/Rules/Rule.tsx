@@ -28,7 +28,7 @@ const RuleComponent: React.FC<Props> = React.memo(({ rule, error, onSet, onDelet
         <Button compact size="mini" icon="delete" negative onClick={(_) => onDelete(rule)} />
       </Table.Cell>
       <Table.Cell textAlign="center">
-        <EditRuleModal rule={rule} error={error} onSave={onSet} />
+        <EditRuleModal initialRule={rule} error={error} onSave={onSet} />
       </Table.Cell>
     </Table.Row>
   );

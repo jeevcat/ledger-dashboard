@@ -42,7 +42,7 @@ const Rules: React.FC<Props> = () => {
       ruleName: "NEW RULE",
       matchFieldName: "description",
       descriptionTemplate: "{{description}}",
-      matchFieldRegex: "$^",
+      matchFieldRegex: "(?i)",
       postings: [
         {
           account: "?",
