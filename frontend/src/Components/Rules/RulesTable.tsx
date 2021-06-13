@@ -37,9 +37,9 @@ const RulesTable: React.FC<Props> = ({ onSetRuleRequested, onDeleteRuleRequested
             <Table.HeaderCell>Priority</Table.HeaderCell>
             <Table.HeaderCell>Name</Table.HeaderCell>
             <Table.HeaderCell>Description template</Table.HeaderCell>
-            <Table.HeaderCell>Field name</Table.HeaderCell>
-            <Table.HeaderCell>Field regex</Table.HeaderCell>
-            <Table.HeaderCell>Account</Table.HeaderCell>
+            <Table.HeaderCell>Match field</Table.HeaderCell>
+            <Table.HeaderCell>Regex</Table.HeaderCell>
+            <Table.HeaderCell>Postings</Table.HeaderCell>
             <Table.HeaderCell />
             <Table.HeaderCell />
           </Table.Row>

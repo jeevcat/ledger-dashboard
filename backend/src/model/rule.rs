@@ -7,8 +7,8 @@ use crate::templater::Templater;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RulePostingPrice {
-    pub currency_field_name: String,
     pub amount_field_name: String,
+    pub currency_field_name: String,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
@@ -24,18 +24,9 @@ pub struct RulePosting {
     pub price: Option<RulePostingPrice>,
     pub account: String,
     /// Should the amount be negated?
-    #[serde(default = "default_true", skip_serializing_if = "is_true")]
     pub negate: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
-}
-
-fn default_true() -> bool {
-    true
-}
-
-fn is_true(boolean: &bool) -> bool {
-    *boolean
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

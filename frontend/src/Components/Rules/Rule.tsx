@@ -1,8 +1,9 @@
 import React from "react";
-import { Table, Button, Label } from "semantic-ui-react";
+import { Button, Label, Table } from "semantic-ui-react";
 import { Rule } from "../../Models/Rule";
 import EditRuleModal from "../EditRuleModal";
 import AccountName from "../Transactions/AccountName";
+import PostingsTable from "./PostingsTable";
 
 interface Props {
   rule: Rule;
@@ -12,18 +13,28 @@ interface Props {
 }
 
 const RuleComponent: React.FC<Props> = React.memo(({ rule, error, onSet, onDelete }) => {
+  const postings =
+    rule.postings.length < 2 ? (
+      <AccountName account={rule.postings[0].account} />
+    ) : (
+      <PostingsTable postings={rule.postings} />
+    );
   return (
     <Table.Row>
       <Table.Cell>{rule.priority}</Table.Cell>
       <Table.Cell>
         <Label color="blue">{rule.ruleName}</Label>
       </Table.Cell>
-      <Table.Cell>{rule.descriptionTemplate}</Table.Cell>
-      <Table.Cell>{rule.matchFieldName}</Table.Cell>
-      <Table.Cell>{rule.matchFieldRegex}</Table.Cell>
       <Table.Cell>
-        <AccountName account={rule.postings[0].account} />
+        <code>{rule.descriptionTemplate}</code>
       </Table.Cell>
+      <Table.Cell>
+        <code>{rule.matchFieldName}</code>
+      </Table.Cell>
+      <Table.Cell>
+        <code>{rule.matchFieldRegex}</code>
+      </Table.Cell>
+      <Table.Cell>{postings}</Table.Cell>
       <Table.Cell textAlign="center">
         <Button compact size="mini" icon="delete" negative onClick={(_) => onDelete(rule)} />
       </Table.Cell>

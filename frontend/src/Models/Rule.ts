@@ -9,9 +9,16 @@ export interface Rule {
   postings: RulePosting[];
 }
 
+export interface Price {
+  amountFieldName?: string;
+  currencyFieldName?: string;
+}
+
 export interface RulePosting {
   amountFieldName?: string;
   currencyFieldName?: string;
+  price?: Price;
   account: string;
   negate?: boolean;
+  comment?: string;
 }

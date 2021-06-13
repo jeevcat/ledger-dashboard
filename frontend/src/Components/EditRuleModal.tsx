@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
-import { Button, Form, Icon, Label, Modal } from "semantic-ui-react";
-import { Rule } from "../Models/Rule";
+import { Button, Form, Header, Icon, Label, Modal, Segment } from "semantic-ui-react";
+import { Price, Rule, RulePosting } from "../Models/Rule";
 import { AccountsContext } from "../Utils/AccountsContext";
 import { toTitleCase } from "../Utils/TextUtils";
 import LedgerAccountsDropdown from "./LedgerAccountsDropdown";
@@ -19,6 +19,38 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
   } = useContext(AccountsContext);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [rule, setRule] = useState(initialRule);
+
+  const updatePosting = (field: keyof RulePosting, postingIndex: number, value: any) =>
+    setRule((prev) => ({
+      ...prev,
+      postings: [
+        ...prev.postings.slice(0, postingIndex),
+        { ...prev.postings[postingIndex], [field]: value },
+        ...prev.postings.slice(postingIndex + 1),
+      ],
+    }));
+
+  const updatePrice = (field: keyof RulePosting, postingIndex: number, value: any) => {
+    if (!value) {
+      updatePosting("price", postingIndex, undefined);
+      return;
+    }
+
+    setRule((prev) => ({
+      ...prev,
+      postings: [
+        ...prev.postings.slice(0, postingIndex),
+        {
+          ...prev.postings[postingIndex],
+          price: {
+            ...prev.postings[postingIndex].price,
+            [field]: value,
+          },
+        },
+        ...prev.postings.slice(postingIndex + 1),
+      ],
+    }));
+  };
 
   const ruleInput = (field: keyof Rule, error?: string) => {
     const input = (
@@ -49,6 +81,25 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
       return input;
     }
   };
+
+  const postingInput = (field: keyof RulePosting, postingIndex: number) => (
+    <Form.Input
+      fluid
+      label={toTitleCase(field.toString())}
+      value={rule.postings[postingIndex][field]}
+      placeholder="None"
+      onChange={(_, data) => updatePosting(field, postingIndex, data.value)}
+    />
+  );
+
+  const postingCheckbox = (field: keyof RulePosting, postingIndex: number) => (
+    <Form.Checkbox
+      label={toTitleCase(field.toString())}
+      checked={!!rule.postings[postingIndex][field]}
+      onChange={(_, data) => updatePosting(field, postingIndex, data.checked)}
+    />
+  );
+
   const fieldDropdown = () => (
     <Form.Dropdown
       label="Match on field"
@@ -65,6 +116,41 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
     />
   );
 
+  const postingFieldDropdown = (field: keyof RulePosting, postingIndex: number) => (
+    <Form.Dropdown
+      label={toTitleCase(field.toString())}
+      value={rule.postings[postingIndex][field] as string | undefined}
+      placeholder="None"
+      selection
+      search
+      clearable
+      options={ruleFields.map((field) => ({
+        value: field,
+        text: toTitleCase(field.toString()),
+      }))}
+      onChange={(_, data) => updatePosting(field, postingIndex, data.value)}
+    />
+  );
+
+  const priceFieldDropdown = (field: keyof Price, postingIndex: number) => {
+    const price = rule.postings[postingIndex].price;
+    return (
+      <Form.Dropdown
+        label={"Price " + toTitleCase(field.toString())}
+        value={price ? price[field] : ""}
+        placeholder="None"
+        selection
+        search
+        clearable
+        options={ruleFields.map((field) => ({
+          value: field,
+          text: toTitleCase(field.toString()),
+        }))}
+        onChange={(_, data) => updatePrice(field, postingIndex, data.value)}
+      />
+    );
+  };
+
   return (
     <Modal
       trigger={
@@ -79,6 +165,7 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
         />
       }
       open={isOpen}
+      size="large"
     >
       <Modal.Header>Edit rule</Modal.Header>
       <Modal.Content>
@@ -87,34 +174,81 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
             {ruleInput("priority")}
             {ruleInput("ruleName")}
           </Form.Group>
-          {fieldDropdown()}
-          {ruleInput("matchFieldRegex", error)}
-          <LedgerAccountsDropdown
-            label="Target account"
-            account={rule.postings[0].account}
-            onEdit={(newAccount: string) =>
+          <Form.Group widths="equal">
+            {fieldDropdown()}
+            {ruleInput("matchFieldRegex", error)}
+          </Form.Group>
+          {ruleInput("descriptionTemplate")}
+          <Header>Postings ({rule.postings.length})</Header>
+          {rule.postings.map((posting, index) => (
+            <Segment key={index}>
+              <Label ribbon>{String.fromCharCode(65 + index)}</Label>
+              <Form.Group widths="equal">
+                <LedgerAccountsDropdown
+                  label="Account"
+                  account={posting.account}
+                  onEdit={(newAccount: string) => updatePosting("account", index, newAccount)}
+                />
+                {postingInput("comment", index)}
+              </Form.Group>
+              <Form.Group widths="equal">
+                {postingFieldDropdown("amountFieldName", index)}
+                {postingFieldDropdown("currencyFieldName", index)}
+              </Form.Group>
+              <Form.Group widths="equal">
+                {priceFieldDropdown("amountFieldName", index)}
+                {priceFieldDropdown("currencyFieldName", index)}
+              </Form.Group>
+              {postingCheckbox("negate", index)}
+              <Button
+                negative
+                basic
+                icon
+                labelPosition="right"
+                onClick={() =>
+                  setRule((prev) => ({
+                    ...prev,
+                    postings: [...prev.postings.slice(0, index), ...prev.postings.slice(index + 1)],
+                  }))
+                }
+              >
+                <Icon name="delete" />
+                Remove posting
+              </Button>
+            </Segment>
+          ))}
+          <Button
+            positive
+            icon
+            basic
+            labelPosition="right"
+            onClick={() =>
               setRule((prev) => ({
                 ...prev,
-                postings: [{ ...prev.postings[0], account: newAccount }, ...prev.postings.slice(1)],
+                postings: [...prev.postings, { account: "?" }],
               }))
             }
-          />
-          {ruleInput("descriptionTemplate")}
+          >
+            <Icon name="add" />
+            Add posting
+          </Button>
         </Form>
       </Modal.Content>
       <Modal.Actions>
         <Button
-          color="red"
+          negative
           icon
           labelPosition="right"
           onClick={() => {
+            setRule(initialRule);
             setIsOpen(false);
           }}
         >
-          <Icon name="remove" /> Cancel
+          <Icon name="remove" />
+          Cancel
         </Button>
         <Button
-          color="green"
+          positive
           icon
           labelPosition="right"
           disabled={JSON.stringify(rule) === JSON.stringify(initialRule)}
@@ -123,7 +257,8 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
             onSave(rule);
           }}
         >
-          <Icon name="checkmark" /> Record
+          <Icon name="checkmark" />
+          Record
         </Button>
       </Modal.Actions>
     </Modal>
