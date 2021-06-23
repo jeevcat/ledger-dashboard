@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use log::info;
+use log::{error, info};
 use rustbreak::FileDatabase;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -99,7 +99,15 @@ where
     info!("Using {} db at: {:#?}", filename, db_path);
     let rules: FileDatabase<T, rustbreak::deser::Yaml> =
         FileDatabase::load_from_path_or_default(&db_path)
-            .or_else(|_| FileDatabase::create_at_path(db_path, T::default()))
+            .or_else(|_| {
+                std::fs::create_dir_all(db_path.parent().unwrap()).unwrap_or_else(|e| {
+                    error!(
+                        "Couldn't create database directory path for {:?}\n{}",
+                        db_path, e
+                    )
+                });
+                FileDatabase::create_at_path(db_path, T::default())
+            })
             .unwrap();
     rules.save().unwrap();
     rules

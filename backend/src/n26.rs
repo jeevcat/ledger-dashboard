@@ -136,7 +136,7 @@ impl N26 {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn get_authentication(&self) -> Option<TokenData> {

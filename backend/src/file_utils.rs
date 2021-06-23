@@ -1,4 +1,7 @@
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use log::info;
 
@@ -36,17 +39,25 @@ pub fn get_database_file(filename: &str) -> Option<PathBuf> {
     Some(get_database_path()?.join(filename))
 }
 
-fn get_backend_path() -> Option<PathBuf> {
+fn get_root_path() -> Option<PathBuf> {
     // Support for running inside cargo directory structure
     if let Some(cargo_project_root) = option_env!("CARGO_MANIFEST_DIR") {
-        info!(
-            "We are running inside cargo with root: {}",
-            cargo_project_root
-        );
-        return Some(PathBuf::from(cargo_project_root));
+        if Path::new(cargo_project_root).join("Cargo.toml").exists() {
+            info!(
+                "We are running inside cargo with root: {}",
+                cargo_project_root
+            );
+            return Some(PathBuf::from(cargo_project_root));
+        }
     }
+
     // Default to exe directory
-    Some(env::current_exe().ok()?.parent()?.to_path_buf())
+    let root = env::current_exe().ok()?.parent()?.to_path_buf();
+    info!(
+        "Defaulting to root next to executable: {}",
+        root.to_string_lossy()
+    );
+    Some(root)
 }
 
 fn get_journal_path() -> Option<PathBuf> {
@@ -66,6 +77,6 @@ fn get_ledger_file() -> Option<PathBuf> {
 fn get_database_path() -> Option<PathBuf> {
     match config::database_path() {
         Some(path) => Some(PathBuf::from(path)),
-        None => get_backend_path(),
+        None => get_root_path(),
     }
 }
