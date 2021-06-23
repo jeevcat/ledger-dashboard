@@ -306,6 +306,7 @@ mod tests {
     }
 
     #[actix_rt::test]
+    #[ignore = "Contacts external service"]
     async fn check_get_balance() {
         dotenv::dotenv().ok();
         let bal = get_balance().await;
