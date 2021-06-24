@@ -7,7 +7,7 @@ import { TransactionRequest } from "../Models/TransactionRequest";
 
 // Using blank host relies on React Proxying when developing
 // https://create-react-app.dev/docs/proxying-api-requests-in-development/
-const host = !process.env.NODE_ENV || process.env.NODE_ENV === "development" ? "" : "http://tank:8080";
+const host = !process.env.NODE_ENV || process.env.NODE_ENV === "development" ? "" : process.env.REACT_APP_BACKEND_URL;
 
 export const getExistingTransactions = (account: ImportAccount): Promise<TransactionResponse[]> =>
   get(`transactions/existing/${account.id}`);
