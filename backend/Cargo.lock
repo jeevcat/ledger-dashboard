@@ -303,6 +303,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-web-httpauth"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c3b11a07a3df3f7970fd8bd38cc66998b5549f507c54cc64c6e843bc82d6358"
+dependencies = [
+ "actix-web",
+ "base64",
+ "futures-util",
+]
+
+[[package]]
 name = "actix_derive"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -404,6 +415,7 @@ dependencies = [
  "actix-rt",
  "actix-service",
  "actix-web",
+ "actix-web-httpauth",
  "async-trait",
  "base64",
  "cached",

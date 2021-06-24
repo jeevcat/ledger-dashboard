@@ -1,5 +1,9 @@
 use std::env;
 
+pub fn api_key() -> Option<String> {
+    env::var("API_KEY").ok()
+}
+
 pub fn n26_username() -> Option<String> {
     env::var("N26_USERNAME").ok()
 }
@@ -57,5 +61,8 @@ pub fn journal_repo_url() -> Option<String> {
 }
 
 pub fn journal_repo_credentials() -> Option<(String, String)> {
-    Some((env::var("JOURNAL_REPO_USERNAME").ok()?, env::var("JOURNAL_REPO_PASSWORD").ok()?))
+    Some((
+        env::var("JOURNAL_REPO_USERNAME").ok()?,
+        env::var("JOURNAL_REPO_PASSWORD").ok()?,
+    ))
 }

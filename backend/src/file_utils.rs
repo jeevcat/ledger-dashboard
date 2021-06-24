@@ -95,8 +95,8 @@ fn get_ledger_file() -> Option<PathBuf> {
 
 fn get_database_path() -> Option<PathBuf> {
     get_repo_database_path().or_else(|| {
-    config::database_path()
-        .map(PathBuf::from)
-        .or_else(get_root_path)
+        config::database_path()
+            .map(PathBuf::from)
+            .or_else(get_root_path)
     })
 }

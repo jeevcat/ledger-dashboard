@@ -1,6 +1,7 @@
-use crate::{config, file_utils};
 use git2::{build::RepoBuilder, FetchOptions, Repository};
 use log::info;
+
+use crate::{config, file_utils};
 
 pub fn checkout() -> Option<()> {
     let url = config::journal_repo_url()?;
@@ -10,7 +11,11 @@ pub fn checkout() -> Option<()> {
         info!("Found repo in {}", path.to_string_lossy());
         repo
     } else {
-        info!("Cloning journal from {} into {}", url, path.to_string_lossy());
+        info!(
+            "Cloning journal from {} into {}",
+            url,
+            path.to_string_lossy()
+        );
 
         let mut fetch_opts = FetchOptions::new();
         if let Some((user, password)) = config::journal_repo_credentials() {

@@ -2,9 +2,10 @@ use std::{io, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::{middleware, App, HttpServer};
+use actix_web_httpauth::middleware::HttpAuthentication;
 use saltedge::SaltEdge;
 
-use crate::{alpha_vantage, api, db, hledger, ib::Ib, n26, prices, saltedge};
+use crate::{alpha_vantage, api, auth::validator, db, hledger, ib::Ib, n26, prices, saltedge};
 
 pub async fn run_server() -> io::Result<()> {
     let db = Arc::new(db::Database::new());
@@ -26,6 +27,7 @@ pub async fn run_server() -> io::Result<()> {
                     .allow_any_method()
                     .allow_any_header(),
             )
+            .wrap(HttpAuthentication::basic(validator))
             .data(n26.clone())
             .data(saltedge.clone())
             .data(ib.clone())

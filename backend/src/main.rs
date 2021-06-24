@@ -1,5 +1,6 @@
 mod alpha_vantage;
 mod api;
+mod auth;
 mod config;
 mod db;
 mod file_utils;
