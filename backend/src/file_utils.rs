@@ -39,6 +39,13 @@ pub fn get_database_file(filename: &str) -> Option<PathBuf> {
     Some(get_database_path()?.join(filename))
 }
 
+pub fn get_repo_path() -> Option<PathBuf> {
+    let repo_url = config::journal_repo_url()?;
+    let (_, repo_name) = repo_url.rsplit_once("/")?;
+    let root = get_root_path()?;
+    Some(root.join(repo_name))
+}
+
 fn get_root_path() -> Option<PathBuf> {
     // Support for running inside cargo directory structure
     if let Some(cargo_project_root) = option_env!("CARGO_MANIFEST_DIR") {
@@ -61,9 +68,21 @@ fn get_root_path() -> Option<PathBuf> {
 }
 
 fn get_journal_path() -> Option<PathBuf> {
-    config::journal_path()
-        .map(PathBuf::from)
-        .or_else(get_ledger_file)
+    get_repo_journal_path().or_else(|| {
+        config::journal_path()
+            .map(PathBuf::from)
+            .or_else(get_ledger_file)
+    })
+}
+
+fn get_repo_journal_path() -> Option<PathBuf> {
+    let root = get_repo_path()?;
+    Some(root.join(config::journal_path()?))
+}
+
+fn get_repo_database_path() -> Option<PathBuf> {
+    let root = get_repo_path()?;
+    Some(root.join(config::database_path()?))
 }
 
 fn get_ledger_file() -> Option<PathBuf> {
@@ -75,8 +94,9 @@ fn get_ledger_file() -> Option<PathBuf> {
 }
 
 fn get_database_path() -> Option<PathBuf> {
-    match config::database_path() {
-        Some(path) => Some(PathBuf::from(path)),
-        None => get_root_path(),
-    }
+    get_repo_database_path().or_else(|| {
+    config::database_path()
+        .map(PathBuf::from)
+        .or_else(get_root_path)
+    })
 }

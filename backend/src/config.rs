@@ -40,10 +40,22 @@ pub fn ib_flex_transactions_query_id() -> Option<String> {
     env::var("IB_FLEX_TRANSACTIONS_QUERY_ID").ok()
 }
 
+/// Relative to journal repo root if journal_repo_url is supplied
+/// Otherwise absolute
 pub fn journal_path() -> Option<String> {
     env::var("JOURNAL_PATH").ok()
 }
 
+/// Relative to journal repo root if journal_repo_url is supplied
+/// Otherwise absolute
 pub fn database_path() -> Option<String> {
     env::var("DATABASE_PATH").ok()
+}
+
+pub fn journal_repo_url() -> Option<String> {
+    env::var("JOURNAL_REPO_URL").ok()
+}
+
+pub fn journal_repo_credentials() -> Option<(String, String)> {
+    Some((env::var("JOURNAL_REPO_USERNAME").ok()?, env::var("JOURNAL_REPO_PASSWORD").ok()?))
 }

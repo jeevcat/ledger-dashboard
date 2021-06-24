@@ -9,3 +9,5 @@ target/
 *_db.yml
 *.csv
 .env
+# Will be cloned here if running locally
+ledger/
