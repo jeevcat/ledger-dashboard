@@ -1,9 +1,10 @@
 use std::{io, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{middleware, App, HttpServer};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 use saltedge::SaltEdge;
+use serde_json::json;
 
 use crate::{alpha_vantage, api, auth::validator, db, hledger, ib::Ib, n26, prices, saltedge};
 
@@ -41,6 +42,11 @@ pub async fn run_server() -> io::Result<()> {
             .service(api::balance::balance_routes())
             .service(api::reports::reports_routes())
             .service(api::prices::prices_routes())
+            .service(web::resource("/ping").route(
+                web::get().to(|| {
+                    HttpResponse::Ok().json(json!({ "version": env!("CARGO_PKG_VERSION") }))
+                }),
+            ))
     })
     .bind("0.0.0.0:8080")?
     .run()
