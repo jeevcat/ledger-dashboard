@@ -6,10 +6,16 @@ import "../App.css";
 import { ImportAccounts } from "../Models/ImportAccount";
 import { AccountsComponent } from "./Accounts";
 import { Import } from "./Import";
+import { Login } from "./Login/Login";
+import useApiKey from "./Login/useApiKey";
 import { IncomeStatement } from "./Reports/IncomeStatement";
 import { NetWorth } from "./Reports/NetWorth";
 
 const App: React.FC = () => {
+  const { apiKey, setApiKey } = useApiKey();
+  if (!apiKey) {
+    return <Login setApiKey={setApiKey} />;
+  }
   return (
     <Router>
       <div className="flexbox">

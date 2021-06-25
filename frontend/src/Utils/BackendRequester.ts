@@ -1,3 +1,4 @@
+import { getApiKey } from "../Components/Login/useApiKey";
 import { Balance } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { TransactionResponse } from "../Models/ImportRow";
@@ -48,8 +49,19 @@ export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatem
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;
 
+const makeAuthHeader = () => ({ Authorization: "Basic " + btoa(":" + getApiKey()) });
+
+export const ping = (apiKey: string): Promise<boolean> =>
+  fetch(makeUrl("ping"), {
+    headers: {
+      Authorization: "Basic " + btoa(":" + apiKey),
+    },
+  }).then((response) => {
+    return response.ok;
+  });
+
 const get = <T>(url: string, query?: Record<string, string>): Promise<T> => {
-  return fetch(makeUrl(url, query)).then((response) => {
+  return fetch(makeUrl(url, query), { headers: makeAuthHeader() }).then((response) => {
     if (!response.ok) {
       throw new Error(response.statusText);
     }
@@ -61,6 +73,7 @@ const post = <T>(url: string, data?: T): Promise<any> => {
   return fetch(makeUrl(url), {
     method: "POST",
     headers: {
+      ...makeAuthHeader(),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(data),
@@ -72,6 +85,7 @@ const post = <T>(url: string, data?: T): Promise<any> => {
 const del = (url: string): Promise<void> => {
   return fetch(makeUrl(url), {
     method: "DELETE",
+    headers: makeAuthHeader(),
   }).then((response) => {
     if (!response.ok) {
       throw new Error(response.statusText);

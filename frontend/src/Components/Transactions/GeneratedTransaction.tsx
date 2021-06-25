@@ -13,7 +13,6 @@ interface Props {
 const GeneratedTransaction: React.FC<Props> = ({ transaction, account, negative }) => {
   const posting = (posting: Posting, key: number) => {
     const amount = getPostingAmount(posting, negative);
-    console.log(posting);
 
     return (
       <Popup
