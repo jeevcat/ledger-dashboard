@@ -10,6 +10,7 @@ import { Login } from "./Login/Login";
 import useApiKey from "./Login/useApiKey";
 import { IncomeStatement } from "./Reports/IncomeStatement";
 import { NetWorth } from "./Reports/NetWorth";
+import { Save } from "./Save/Save";
 
 const App: React.FC = () => {
   const { apiKey, setApiKey } = useApiKey();
@@ -25,6 +26,9 @@ const App: React.FC = () => {
             <Menu.Menu>
               <Menu.Item as={NavLink} to={"/accounts"}>
                 Account overview
+              </Menu.Item>
+              <Menu.Item as={NavLink} to={"/save"}>
+                Save
               </Menu.Item>
               {ImportAccounts.map((x) => (
                 <Menu.Item key={x.id} as={NavLink} to={`/import/${x.id}`}>
@@ -50,6 +54,7 @@ const App: React.FC = () => {
           <Switch>
             <Route path="/import/:accountName" component={Import} />
             <Route path="/accounts" component={AccountsComponent} />
+            <Route path="/save" component={Save} />
             <Route path="/report/incomestatement" component={IncomeStatement} />
             <Route path="/report/networth" component={NetWorth} />
             <Route path="/" component={AccountsComponent} />
