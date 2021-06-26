@@ -1,12 +1,17 @@
 use std::{io, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{
+    middleware::{self, Condition},
+    web, App, HttpResponse, HttpServer,
+};
 use actix_web_httpauth::middleware::HttpAuthentication;
 use saltedge::SaltEdge;
 use serde_json::json;
 
-use crate::{alpha_vantage, api, auth::validator, db, hledger, ib::Ib, n26, prices, saltedge};
+use crate::{
+    alpha_vantage, api, auth::validator, config, db, hledger, ib::Ib, n26, prices, saltedge,
+};
 
 pub async fn run_server() -> io::Result<()> {
     let db = Arc::new(db::Database::new());
@@ -28,7 +33,10 @@ pub async fn run_server() -> io::Result<()> {
                     .allow_any_method()
                     .allow_any_header(),
             )
-            .wrap(HttpAuthentication::basic(validator))
+            .wrap(Condition::new(
+                config::api_key().is_some(),
+                HttpAuthentication::basic(validator),
+            ))
             .data(n26.clone())
             .data(saltedge.clone())
             .data(ib.clone())
@@ -42,6 +50,7 @@ pub async fn run_server() -> io::Result<()> {
             .service(api::balance::balance_routes())
             .service(api::reports::reports_routes())
             .service(api::prices::prices_routes())
+            .service(api::journal::journal_routes())
             .service(web::resource("/ping").route(
                 web::get().to(|| {
                     HttpResponse::Ok().json(json!({ "version": env!("CARGO_PKG_VERSION") }))

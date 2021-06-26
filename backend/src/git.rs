@@ -1,4 +1,6 @@
-use git2::{build::RepoBuilder, FetchOptions, Remote, Repository};
+use git2::{
+    build::RepoBuilder, FetchOptions, IndexAddOption, PushOptions, Remote, Repository, Status,
+};
 use log::info;
 
 use crate::{config, file_utils};
@@ -15,15 +17,91 @@ pub fn checkout() -> Repository {
     repo
 }
 
-fn get_fetch_options<'a>() -> FetchOptions<'a> {
-    let mut fetch_opts = FetchOptions::new();
-    if let Some((user, password)) = config::journal_repo_credentials() {
-        info!("Git credentials supplied. Using basic auth for remote operations.");
-        let auth = base64::encode(format!("{}:{}", user, password));
-        let auth_header = format!("AUTHORIZATION: basic {}", auth);
-        fetch_opts.custom_headers(&[&auth_header]);
+pub fn commit_and_push(commit_msg: &str) -> Result<(), git2::Error> {
+    let repo = checkout();
+
+    if !is_dirty(&repo)? {
+        info!("Nothing to commit!");
+        return Ok(());
     }
-    fetch_opts
+
+    commit(&repo, commit_msg)?;
+    push(&repo)?;
+
+    Ok(())
+}
+
+fn is_dirty(repo: &Repository) -> Result<bool, git2::Error> {
+    Ok(repo
+        .statuses(None)?
+        .iter()
+        .any(|s| !matches!(s.status(), Status::IGNORED | Status::CURRENT)))
+}
+
+fn commit(repo: &Repository, commit_msg: &str) -> Result<(), git2::Error> {
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+
+    let head = repo.head()?.target().unwrap();
+    let head = repo.find_commit(head)?;
+
+    let mut index = repo.index()?;
+    let id = index.write_tree()?;
+
+    let tree = repo.find_tree(id)?;
+    if tree.is_empty() {
+        info!("Nothing to commit");
+        return Ok(());
+    }
+
+    let sig = repo.signature()?;
+
+    info!(
+        "Committing to repo as {} with commit message '{}'",
+        sig.name().unwrap_or("Unknown"),
+        commit_msg
+    );
+
+    repo.commit(Some("HEAD"), &sig, &sig, commit_msg, &tree, &[&head])?;
+    Ok(())
+}
+
+fn push(repo: &Repository) -> Result<(), git2::Error> {
+    let mut remote = get_default_remote(&repo)?;
+    do_fetch(&repo, &mut remote)?;
+    let remote_branch = get_default_branch(&remote)?;
+
+    info!("Got default branch {}", remote_branch);
+    let refs: &[&str] = &[&remote_branch];
+    info!("Pushing {} to {}", remote_branch, remote.name().unwrap_or("Unknown"));
+    let mut opts = get_push_options();
+    remote.push(refs, Some(&mut opts))?;
+    Ok(())
+}
+
+fn get_auth_headers() -> Option<String> {
+    config::journal_repo_credentials().map(|(user, password)| {
+        info!("Git credentials supplied. Using basic auth.");
+        let auth = base64::encode(format!("{}:{}", user, password));
+        format!("AUTHORIZATION: basic {}", auth)
+    })
+}
+
+fn get_fetch_options<'a>() -> FetchOptions<'a> {
+    let mut opts = FetchOptions::new();
+    if let Some(headers) = get_auth_headers() {
+        opts.custom_headers(&[&headers]);
+    }
+    opts
+}
+
+fn get_push_options<'a>() -> PushOptions<'a> {
+    let mut opts = PushOptions::new();
+    if let Some(headers) = get_auth_headers() {
+        opts.custom_headers(&[&headers]);
+    }
+    opts
 }
 
 fn clone_or_pull(url: &str) -> Repository {
@@ -98,7 +176,7 @@ fn do_merge<'a>(
         info!("Doing a fast forward");
         // do a fast forward
         let refname = format!("refs/heads/{}", remote_branch);
-        match repo.find_reference(&refname) {
+        match repo.find_reference(remote_branch) {
             Ok(mut r) => {
                 fast_forward(repo, &mut r, &fetch_commit)?;
             }
