@@ -56,8 +56,8 @@ pub fn database_path() -> Option<String> {
     env::var("DATABASE_PATH").ok()
 }
 
-pub fn journal_repo_url() -> Option<String> {
-    env::var("JOURNAL_REPO_URL").ok()
+pub fn journal_repo_url() -> String {
+    env::var("JOURNAL_REPO_URL").expect("JOURNAL_REPO_URL must be set!")
 }
 
 pub fn journal_repo_credentials() -> Option<(String, String)> {

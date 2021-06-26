@@ -18,7 +18,7 @@ export const AccountsComponent: React.FC = () => {
   const inSync = Math.abs(diff) < 0.1;
   return (
     <Grid textAlign="center" verticalAlign="middle" style={{ height: "100vh", margin: 0 }}>
-      <Grid.Column style={{ maxWidth: 800 }}>
+      <Grid.Column style={{ maxWidth: 800 }} textAlign="left">
         <Header as="h1">Accounts</Header>
         <Table celled>
           <Table.Header>

@@ -40,7 +40,7 @@ pub fn get_database_file(filename: &str) -> Option<PathBuf> {
 }
 
 pub fn get_repo_path() -> Option<PathBuf> {
-    let repo_url = config::journal_repo_url()?;
+    let repo_url = config::journal_repo_url();
     let (_, repo_name) = repo_url.rsplit_once("/")?;
     let root = get_root_path()?;
     Some(root.join(repo_name))

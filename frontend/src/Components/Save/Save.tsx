@@ -12,9 +12,9 @@ export const Save: React.FC<Props> = () => {
     e.preventDefault();
   };
   return (
-    <Grid textAlign="center" style={{ height: "100vh" }} verticalAlign="middle">
+    <Grid textAlign="center" verticalAlign="middle" style={{ height: "100vh", margin: 0 }}>
       <Grid.Column style={{ maxWidth: 800 }} textAlign="left">
-        <Header as="h2">Commit changes</Header>
+        <Header as="h1">Commit changes</Header>
         <Form size="large" onSubmit={handleSubmit}>
           <Segment stacked>
             <Form.Field fluid error={error}>
@@ -32,7 +32,7 @@ export const Save: React.FC<Props> = () => {
                 </Label>
               )}
             </Form.Field>
-            <DirectoryListing />
+            <DirectoryListing paths={[String.raw`D:\Projects\ledger-dashboard\frontend\src\Components\Save\Save.tsx`, "/usr/bin/local/my_exe.bin"]} />
 
             <Button color="blue" fluid size="large">
               Commit changes
