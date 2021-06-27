@@ -206,10 +206,12 @@ impl N26 {
     async fn get_token(&self) -> String {
         let success = self.attempt_refresh_authentication().await;
         if !success {
+            let mut retries = 5;
             // Stall until other auth flows are done
-            while self.waiting_for_mfa.load(Ordering::SeqCst) {
+            while self.waiting_for_mfa.load(Ordering::SeqCst) && retries > 0 {
                 info!("Stalling N26 auth until a different MFA is accepted");
-                thread::sleep(Duration::seconds(5).to_std().unwrap());
+                thread::sleep(Duration::seconds(2).to_std().unwrap());
+                retries -= 1;
             }
 
             self.authenticate().await;
