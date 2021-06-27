@@ -1,9 +1,13 @@
+use std::path::PathBuf;
+
 use git2::{
     build::RepoBuilder, FetchOptions, IndexAddOption, PushOptions, Remote, Repository, Status,
 };
 use log::info;
 
 use crate::{config, file_utils};
+
+type Result<T> = std::result::Result<T, git2::Error>;
 
 const BRANCH: &str = "master";
 const REMOTE: &str = "origin";
@@ -17,8 +21,8 @@ pub fn checkout() -> Repository {
     repo
 }
 
-pub fn commit_and_push(commit_msg: &str) -> Result<(), git2::Error> {
-    let repo = checkout();
+pub fn commit_and_push(commit_msg: &str) -> Result<()> {
+    let repo = get_repo()?;
 
     if !is_dirty(&repo)? {
         info!("Nothing to commit!");
@@ -31,14 +35,38 @@ pub fn commit_and_push(commit_msg: &str) -> Result<(), git2::Error> {
     Ok(())
 }
 
-fn is_dirty(repo: &Repository) -> Result<bool, git2::Error> {
+pub fn get_dirty_files() -> Result<Vec<String>> {
+    let repo = get_repo()?;
+    let paths = repo
+        .statuses(None)?
+        .iter()
+        .filter_map(|s| match s.status() {
+            Status::IGNORED | Status::CURRENT => None,
+            _ => s.path().map(|p| p.to_owned()),
+        })
+        .collect();
+    Ok(paths)
+}
+
+fn get_repo_path() -> PathBuf {
+    let url = config::journal_repo_url();
+    file_utils::get_repo_path()
+        .unwrap_or_else(|| panic!("Failed to determine file path from repo url: {}", &url))
+}
+
+fn get_repo() -> Result<Repository> {
+    let path = get_repo_path();
+    Repository::discover(&path)
+}
+
+fn is_dirty(repo: &Repository) -> Result<bool> {
     Ok(repo
         .statuses(None)?
         .iter()
         .any(|s| !matches!(s.status(), Status::IGNORED | Status::CURRENT)))
 }
 
-fn commit(repo: &Repository, commit_msg: &str) -> Result<(), git2::Error> {
+fn commit(repo: &Repository, commit_msg: &str) -> Result<()> {
     let mut index = repo.index()?;
     index.add_all(["."].iter(), IndexAddOption::DEFAULT, None)?;
     index.write()?;
@@ -67,14 +95,18 @@ fn commit(repo: &Repository, commit_msg: &str) -> Result<(), git2::Error> {
     Ok(())
 }
 
-fn push(repo: &Repository) -> Result<(), git2::Error> {
+fn push(repo: &Repository) -> Result<()> {
     let mut remote = get_default_remote(&repo)?;
     do_fetch(&repo, &mut remote)?;
     let remote_branch = get_default_branch(&remote)?;
 
     info!("Got default branch {}", remote_branch);
     let refs: &[&str] = &[&remote_branch];
-    info!("Pushing {} to {}", remote_branch, remote.name().unwrap_or("Unknown"));
+    info!(
+        "Pushing {} to {}",
+        remote_branch,
+        remote.name().unwrap_or("Unknown")
+    );
     let mut opts = get_push_options();
     remote.push(refs, Some(&mut opts))?;
     Ok(())
@@ -136,12 +168,12 @@ fn clone_or_pull(url: &str) -> Repository {
     }
 }
 
-fn get_default_remote(repo: &Repository) -> Result<Remote, git2::Error> {
+fn get_default_remote(repo: &Repository) -> Result<Remote> {
     // TODO: Can this hardcoded value be discovered automatically?
     repo.find_remote(REMOTE)
 }
 
-fn get_default_branch(remote: &Remote) -> Result<String, git2::Error> {
+fn get_default_branch(remote: &Remote) -> Result<String> {
     Ok(remote
         .default_branch()?
         .as_str()
@@ -152,7 +184,7 @@ fn get_default_branch(remote: &Remote) -> Result<String, git2::Error> {
 fn do_fetch<'a>(
     repo: &'a Repository,
     remote: &mut git2::Remote,
-) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
+) -> Result<git2::AnnotatedCommit<'a>> {
     let refs: &[&str] = &[];
     let mut fo = get_fetch_options();
 
@@ -167,7 +199,7 @@ fn do_merge<'a>(
     repo: &'a Repository,
     remote_branch: &str,
     fetch_commit: git2::AnnotatedCommit<'a>,
-) -> Result<(), git2::Error> {
+) -> Result<()> {
     // 1. do a merge analysis
     let analysis = repo.merge_analysis(&[&fetch_commit])?;
 
@@ -213,7 +245,7 @@ fn fast_forward(
     repo: &Repository,
     lb: &mut git2::Reference,
     rc: &git2::AnnotatedCommit,
-) -> Result<(), git2::Error> {
+) -> Result<()> {
     let name = match lb.name() {
         Some(s) => s.to_string(),
         None => String::from_utf8_lossy(lb.name_bytes()).to_string(),
@@ -236,7 +268,7 @@ fn normal_merge(
     repo: &Repository,
     local: &git2::AnnotatedCommit,
     remote: &git2::AnnotatedCommit,
-) -> Result<(), git2::Error> {
+) -> Result<()> {
     let local_tree = repo.find_commit(local.id())?.tree()?;
     let remote_tree = repo.find_commit(remote.id())?.tree()?;
     let ancestor = repo
