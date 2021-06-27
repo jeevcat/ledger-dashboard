@@ -7,6 +7,8 @@ use crate::git;
 #[serde(rename_all = "camelCase")]
 struct SaveRequestModel {
     commit_msg: String,
+    name: String,
+    email: String,
 }
 
 pub fn journal_routes() -> impl HttpServiceFactory {
@@ -16,7 +18,7 @@ pub fn journal_routes() -> impl HttpServiceFactory {
 }
 
 async fn save_journal(body: web::Json<SaveRequestModel>) -> HttpResponse {
-    git::commit_and_push(&body.commit_msg).unwrap();
+    git::commit_and_push(&body.commit_msg, &body.name, &body.email).unwrap();
     HttpResponse::Ok().finish()
 }
 

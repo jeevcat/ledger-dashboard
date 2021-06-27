@@ -48,7 +48,8 @@ export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatem
 
 export const getDirtyJournalFiles = (): Promise<string[]> => get("journal/dirty");
 
-export const saveJournal = (body: { commitMsg: string }): Promise<void> => post("journal/save", body);
+export const saveJournal = (body: { commitMsg: string; name: string; email: string }): Promise<void> =>
+  post("journal/save", body);
 
 const makeUrl = (url: string, query?: Record<string, string>) =>
   query ? `${host}/${url}?` + new URLSearchParams(query) : `${host}/${url}`;

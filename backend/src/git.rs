@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
+use chrono::Utc;
 use git2::{
-    build::RepoBuilder, FetchOptions, IndexAddOption, PushOptions, Remote, Repository, Status,
+    build::RepoBuilder, FetchOptions, IndexAddOption, PushOptions, Remote, Repository, Signature,
+    Status, Time,
 };
 use log::info;
 
@@ -21,7 +23,7 @@ pub fn checkout() -> Repository {
     repo
 }
 
-pub fn commit_and_push(commit_msg: &str) -> Result<()> {
+pub fn commit_and_push(commit_msg: &str, name: &str, email: &str) -> Result<()> {
     let repo = get_repo()?;
 
     if !is_dirty(&repo)? {
@@ -29,7 +31,7 @@ pub fn commit_and_push(commit_msg: &str) -> Result<()> {
         return Ok(());
     }
 
-    commit(&repo, commit_msg)?;
+    commit(&repo, commit_msg, name, email)?;
     push(&repo)?;
 
     Ok(())
@@ -66,7 +68,7 @@ fn is_dirty(repo: &Repository) -> Result<bool> {
         .any(|s| !matches!(s.status(), Status::IGNORED | Status::CURRENT)))
 }
 
-fn commit(repo: &Repository, commit_msg: &str) -> Result<()> {
+fn commit(repo: &Repository, commit_msg: &str, name: &str, email: &str) -> Result<()> {
     let mut index = repo.index()?;
     index.add_all(["."].iter(), IndexAddOption::DEFAULT, None)?;
     index.write()?;
@@ -83,7 +85,8 @@ fn commit(repo: &Repository, commit_msg: &str) -> Result<()> {
         return Ok(());
     }
 
-    let sig = repo.signature()?;
+    let time = Utc::now();
+    let sig = Signature::new(name, email, &Time::new(time.timestamp(), 0))?;
 
     info!(
         "Committing to repo as {} with commit message '{}'",

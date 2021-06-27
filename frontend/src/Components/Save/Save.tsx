@@ -6,7 +6,9 @@ import { DirectoryListing } from "./DirectoryListing";
 interface Props {}
 
 export const Save: React.FC<Props> = () => {
-  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [dirtyFiles, setDirtyFiles] = useState<string[]>([]);
@@ -24,9 +26,9 @@ export const Save: React.FC<Props> = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input) {
+    if (message) {
       setLoading(true);
-      saveJournal({ commitMsg: input }).then(updateDirtyFiles);
+      saveJournal({ commitMsg: message, name, email }).then(updateDirtyFiles);
     } else {
       setError("Commit message must not be empty.");
     }
@@ -43,7 +45,7 @@ export const Save: React.FC<Props> = () => {
                 placeholder="Commit message"
                 type="text"
                 onChange={(e) => {
-                  setInput(e.target.value);
+                  setMessage(e.target.value);
                   setError("");
                 }}
               />
@@ -52,6 +54,24 @@ export const Save: React.FC<Props> = () => {
                   {error}
                 </Label>
               )}
+            </Form.Field>
+            <Form.Field>
+              <input
+                placeholder="Name"
+                type="text"
+                onChange={(e) => {
+                  setName(e.target.value);
+                }}
+              />
+            </Form.Field>
+            <Form.Field>
+              <input
+                placeholder="E-mail"
+                type="text"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                }}
+              />
             </Form.Field>
             <DirectoryListing paths={dirtyFiles} />
 
