@@ -45,7 +45,7 @@ const GeneratedTransaction: React.FC<Props> = ({ transaction, account, negative 
           <Table.Header>
             <Table.HeaderCell colSpan={2}>{transaction.tdescription}</Table.HeaderCell>
           </Table.Header>
-          {transaction.tpostings?.map(posting)}
+          <Table.Body>{transaction.tpostings?.map(posting)}</Table.Body>
         </Table>
       }
     >

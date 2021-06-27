@@ -32,7 +32,7 @@ const RecordTransactionModalContent: React.FC<Props> = ({
     generateSingleTransaction(importAccount, {
       descriptionTemplate,
       sourceTransaction: realTransaction,
-      postings: [{ account }],
+      postings: [{ account, negate: false }],
       shouldWrite: false,
     })
       .catch((reason: any) => {

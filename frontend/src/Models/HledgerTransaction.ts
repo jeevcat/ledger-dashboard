@@ -26,21 +26,24 @@ export interface FormattedAmount {
 }
 
 export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmount => {
-  /* TODO: different currencies?*/
-  if (p.pamount[0].aprice) {
-    const value = p.pamount[0].aprice.contents.aquantity.floatingPoint;
-    const sym = p.pamount[0].acommodity;
-    const sym_amount = p.pamount[0].aquantity.floatingPoint;
-    const cost = asEuro(negative ? -value : value);
-    const separator = p.pamount[0].aprice.tag === "TotalPrice" ? "@@" : "@";
+  const amt = p.pamount[0];
+  if (amt.aprice) {
+    const value = amt.aprice.contents.aquantity.floatingPoint;
+    const precision = amt.aprice.contents.aquantity.decimalPlaces;
+    const cost = asEuro(negative ? -value : value, precision > 0, precision);
+
+    const sym = amt.acommodity;
+    const sym_amount = amt.aquantity.floatingPoint;
+    const separator = amt.aprice.tag === "TotalPrice" ? "@@" : "@";
 
     return {
       formatted: `${sym_amount} ${sym} ${separator} ${cost}`,
       positive: value > 0,
     };
   }
-  const value = p.pamount[0].aquantity.floatingPoint;
-  const cost = asEuro(negative ? -value : value);
+  const value = amt.aquantity.floatingPoint;
+  const precision = amt.aquantity.decimalPlaces;
+  const cost = asEuro(negative ? -value : value, precision > 0, precision);
   return {
     formatted: cost,
     positive: value > 0,

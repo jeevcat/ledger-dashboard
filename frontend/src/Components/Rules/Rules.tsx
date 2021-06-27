@@ -46,6 +46,7 @@ const Rules: React.FC<Props> = () => {
       postings: [
         {
           account: "?",
+          negate: false,
         },
       ],
     };

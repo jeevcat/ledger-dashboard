@@ -288,10 +288,17 @@ impl ImportAccount for Ib {
 
 #[cfg(test)]
 mod tests {
+    use rust_decimal::{prelude::FromPrimitive, Decimal};
     use serde_xml_rs::from_reader;
 
-    use super::get_transactions;
-    use crate::ib::{get_balance, FlexStatementRequestResponse};
+    use super::{get_transactions, IbTransaction, Trade};
+    use crate::{
+        ib::{get_balance, FlexStatementRequestResponse},
+        model::{
+            hledger_transaction::HledgerTransaction,
+            rule::{RulePosting, RulePostingPrice},
+        },
+    };
 
     #[test]
     fn deserialize_flex_response() {
@@ -303,6 +310,39 @@ mod tests {
 "#;
         let response: FlexStatementRequestResponse = from_reader(xml.as_bytes()).unwrap();
         assert_eq!(response.reference_code, "1234567890");
+    }
+
+    #[test]
+    fn get_ib_postings() {
+        let t = Trade {
+            currency: "EUR".to_string(),
+            symbol: "EMIM".to_string(),
+            description: "ISHARES CORE EM IMI ACC".to_string(),
+            transaction_id: "101876974".to_string(),
+            date_time: "20210305;044915".to_string(),
+            quantity: 322,
+            trade_price: Decimal::from_f32(31.073).unwrap(),
+            trade_money: Decimal::from_f32(10005.51).unwrap(),
+            ib_commission: Decimal::from_f32(-10.00551).unwrap(),
+        };
+        let t = IbTransaction::Trade(t);
+        let h = HledgerTransaction::new_with_postings(
+            &t,
+            "test",
+            "test desc",
+            &[RulePosting {
+                amount_field_name: Some("quantity".to_string()),
+                currency_field_name: Some("symbol".to_string()),
+                price: Some(RulePostingPrice {
+                    amount_field_name: "tradePrice".to_string(),
+                    currency_field_name: "currency".to_string(),
+                }),
+                account: "Investments".to_string(),
+                negate: false,
+                comment: None,
+            }],
+        );
+        println!("{:#?}", h);
     }
 
     #[actix_rt::test]
@@ -317,6 +357,7 @@ mod tests {
     #[ignore = "Contacts external service"]
     async fn check_get_transactions() {
         dotenv::dotenv().ok();
-        get_transactions().await;
+        let t = get_transactions().await;
+        println!("{:#?}", t);
     }
 }

@@ -225,7 +225,7 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
             onClick={() =>
               setRule((prev) => ({
                 ...prev,
-                postings: [...prev.postings, { account: "?" }],
+                postings: [...prev.postings, { account: "?", negate: true }],
               }))
             }
           >

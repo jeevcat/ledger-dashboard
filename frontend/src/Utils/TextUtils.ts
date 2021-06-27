@@ -13,15 +13,16 @@ export function keys<O>(o: O) {
   return Object.keys(o) as (keyof O)[];
 }
 
-export function asEuro(amount: number, cents: boolean = true): string {
-  return asCurrency(amount, "EUR", cents);
+export function asEuro(amount: number, cents: boolean = true, precision: number = 2): string {
+  return asCurrency(amount, "EUR", cents, precision);
 }
 
-export function asCurrency(amount: number, currency: string, cents: boolean = true): string {
+export function asCurrency(amount: number, currency: string, cents: boolean = true, precision: number = 2): string {
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
-    maximumFractionDigits: cents ? 2 : 0,
+    maximumFractionDigits: cents ? precision : 0,
+    minimumFractionDigits: cents ? precision : 0,
   });
   return formatter.format(amount);
 }

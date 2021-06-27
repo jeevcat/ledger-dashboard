@@ -22,7 +22,7 @@ const RecordTransactionModal: React.FC<Props> = ({ realTransaction, onWrite }) =
       generateSingleTransaction(importAccount, {
         descriptionTemplate,
         sourceTransaction: realTransaction,
-        postings: [{ account }],
+        postings: [{ account, negate: false }],
         shouldWrite,
       }),
     [account, descriptionTemplate, importAccount, realTransaction]
