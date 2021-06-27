@@ -6,6 +6,7 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 WORKDIR /usr/bin/hledger
 RUN wget https://github.com/simonmichael/hledger/releases/download/1.21/hledger-ubuntu.zip
 RUN unzip hledger-ubuntu.zip
+RUN rm hledger-ubuntu.zip
 RUN chmod +x ./hledger
 RUN chmod +x ./hledger-web
 
