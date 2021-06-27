@@ -100,7 +100,7 @@ pub struct Posting {
     pdate: Option<NaiveDate>,
     pamount: Vec<Amount>,
     pstatus: String,
-    pcomment: Option<String>,
+    pcomment: String,
     ptype: String,
     ptags: Vec<Vec<String>>,
 }
@@ -118,7 +118,7 @@ impl Posting {
             pdate: None,
             pamount: vec![Amount::new_priced(commodity, amount, price)],
             pstatus: String::from("Unmarked"),
-            pcomment: comment.map(|c| c.to_string()),
+            pcomment: comment.unwrap_or_default().to_string(),
             ptype: String::from("RegularPosting"),
             ptags: vec![],
         }
