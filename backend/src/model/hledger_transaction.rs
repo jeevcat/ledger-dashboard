@@ -87,7 +87,7 @@ impl Amount {
             astyle: AmountStyle {
                 ascommodityside: String::from("R"),
                 ascommodityspaced: true,
-                asprecision: Precision::Precision(2),
+                asprecision: Precision::Precision(quantity.scale()),
             },
             aprice: price.map(Box::new),
         }
@@ -274,7 +274,8 @@ fn get_uuid_from_tags(tags: &[Vec<String>]) -> Option<&str> {
 mod tests {
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
-    use super::Quantity;
+    use super::{Amount, Quantity};
+    use crate::model::hledger_transaction::Precision;
 
     #[test]
     fn check_decimal_conversion() {
@@ -282,5 +283,15 @@ mod tests {
         let quantity: Quantity = decimal.into();
         let decimal2: Decimal = quantity.into();
         assert_eq!(decimal, decimal2);
+    }
+
+    #[test]
+    fn check_amount_precision() {
+        let quantity = Decimal::from_f32(123.4567).unwrap();
+        let amt = Amount::new_priced("EUR", quantity, None);
+        match amt.astyle.asprecision {
+            Precision::Precision(p) => assert_eq!(p, 4),
+            Precision::NaturalPrecision => panic!(),
+        }
     }
 }
