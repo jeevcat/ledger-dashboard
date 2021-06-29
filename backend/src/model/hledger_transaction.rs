@@ -10,13 +10,13 @@ use super::{real_transaction::RealTransaction, rule::RulePosting};
 #[serde(rename_all = "camelCase")]
 struct Quantity {
     floating_point: f64,
-    decimal_places: u32,
+    decimal_places: i32,
     decimal_mantissa: i64,
 }
 impl From<Decimal> for Quantity {
     fn from(decimal: Decimal) -> Self {
         let floating_point = decimal.to_f64().unwrap_or_default();
-        let decimal_places = decimal.scale();
+        let decimal_places = decimal.scale() as i32;
         let decimal_mantissa = decimal.mantissa().try_into().unwrap();
         Quantity {
             floating_point,
@@ -28,13 +28,13 @@ impl From<Decimal> for Quantity {
 
 impl From<Quantity> for Decimal {
     fn from(quantity: Quantity) -> Self {
-        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places)
+        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places as u32)
     }
 }
 
 impl From<&Quantity> for Decimal {
     fn from(quantity: &Quantity) -> Self {
-        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places)
+        Decimal::new(quantity.decimal_mantissa, quantity.decimal_places as u32)
     }
 }
 
@@ -54,7 +54,7 @@ impl Price {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "contents")]
 enum Precision {
-    Precision(u32),
+    Precision(i32),
     NaturalPrecision,
 }
 
@@ -87,7 +87,7 @@ impl Amount {
             astyle: AmountStyle {
                 ascommodityside: String::from("R"),
                 ascommodityspaced: true,
-                asprecision: Precision::Precision(quantity.scale()),
+                asprecision: Precision::Precision(quantity.scale() as i32),
             },
             aprice: price.map(Box::new),
         }

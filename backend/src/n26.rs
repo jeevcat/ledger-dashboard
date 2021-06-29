@@ -8,10 +8,8 @@ use std::{
 };
 
 use async_trait::async_trait;
-use cached::proc_macro::cached;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use log::info;
-use rust_decimal::Decimal;
 use serde_json::{json, value::Value};
 
 use crate::{
@@ -47,7 +45,6 @@ const CHALLENGE_TYPE: &str = "challengeType";
 const CHALLENGE_TYPE_OOB: &str = "oob";
 
 /// Retrieves the current balance
-#[cached(time = 600)]
 async fn get_accounts_request(token: String) -> N26Accounts {
     let request_url: String = format!("{}/api/accounts", BASE_URL_DE);
     let response = reqwest::Client::new()
@@ -66,7 +63,6 @@ async fn get_accounts_request(token: String) -> N26Accounts {
 /// * `limit`     - Limit the number of transactions to return to the given amount
 /// * `last_id`   - ??
 /// Returns a list of transactions
-#[cached(time = 600)]
 async fn get_transactions_request(
     token: String,
     from_time: Option<NaiveDateTime>,
@@ -239,7 +235,7 @@ impl ImportAccount for N26 {
         response
     }
 
-    async fn get_balance(&self) -> Decimal {
+    async fn get_balance(&self) -> f64 {
         let start = Instant::now();
         let token = self.get_token().await;
         let response = get_accounts_request(token).await;

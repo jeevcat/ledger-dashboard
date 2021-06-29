@@ -9,6 +9,7 @@ use log::info;
 use serde_json::json;
 
 use crate::{
+    api::CacheQuery,
     db::Database,
     hledger::Hledger,
     import_account::ImportAccount,
@@ -24,12 +25,16 @@ use crate::{
 pub async fn get_existing_transactions<T>(
     import_account: web::Data<Arc<T>>,
     hledger: web::Data<Arc<Hledger>>,
+    db: web::Data<Arc<Database>>,
+    query: web::Query<CacheQuery>,
 ) -> HttpResponse
 where
-    T: ImportAccount,
+    T: ImportAccount + Sync,
 {
     // Get real transactions
-    let real_transactions = import_account.get_transactions().await;
+    let real_transactions = import_account
+        .get_transactions_cached(&db, query.bypass_cache())
+        .await;
 
     // Get recorded transactions
     let existing =
@@ -44,12 +49,15 @@ pub async fn get_generated_transactions<T>(
     import_account: web::Data<Arc<T>>,
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
+    query: web::Query<CacheQuery>,
 ) -> HttpResponse
 where
-    T: ImportAccount,
+    T: ImportAccount + Sync,
 {
     // Get real transactions
-    let real_transactions = import_account.get_transactions().await;
+    let real_transactions = import_account
+        .get_transactions_cached(&db, query.bypass_cache())
+        .await;
 
     // Get recorded transactions
     let hledger_transactions = hledger
@@ -75,12 +83,15 @@ pub async fn write_generated_transactions<T>(
     import_account: web::Data<Arc<T>>,
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
+    query: web::Query<CacheQuery>,
 ) -> HttpResponse
 where
-    T: ImportAccount,
+    T: ImportAccount + Sync,
 {
     // Get real transactions
-    let real_transactions = import_account.get_transactions().await;
+    let real_transactions = import_account
+        .get_transactions_cached(&db, query.bypass_cache())
+        .await;
 
     let account = import_account.get_hledger_account();
     // Get recorded transactions
@@ -115,12 +126,15 @@ pub async fn get_unmatched_transactions<T>(
     import_account: web::Data<Arc<T>>,
     hledger: web::Data<Arc<Hledger>>,
     db: web::Data<Arc<Database>>,
+    query: web::Query<CacheQuery>,
 ) -> HttpResponse
 where
-    T: ImportAccount,
+    T: ImportAccount + Sync,
 {
     // Get real transactions
-    let real_transactions = import_account.get_transactions().await;
+    let real_transactions = import_account
+        .get_transactions_cached(&db, query.bypass_cache())
+        .await;
 
     // Get recorded transactions
     let hledger_transactions = hledger
@@ -179,12 +193,18 @@ where
     }
 }
 
-pub async fn get_transaction_stats<T>(import_account: web::Data<Arc<T>>) -> HttpResponse
+pub async fn get_transaction_stats<T>(
+    import_account: web::Data<Arc<T>>,
+    db: web::Data<Arc<Database>>,
+    query: web::Query<CacheQuery>,
+) -> HttpResponse
 where
-    T: ImportAccount,
+    T: ImportAccount + Sync,
 {
     // Get real transactions
-    let real_transactions = import_account.get_transactions().await;
+    let real_transactions = import_account
+        .get_transactions_cached(&db, query.bypass_cache())
+        .await;
     let mut fields_map = HashMap::<String, BTreeMap<String, u32>>::new();
     for t in real_transactions.iter() {
         for (key, value) in t.to_json_value().as_object().unwrap().iter() {

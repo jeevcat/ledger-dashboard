@@ -1,11 +1,10 @@
-use rust_decimal::Decimal;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaltEdgeAccount {
     pub id: String,
-    pub balance: Decimal,
+    pub balance: f64,
     #[serde(flatten)]
     extra: serde_json::Map<String, serde_json::Value>,
 }

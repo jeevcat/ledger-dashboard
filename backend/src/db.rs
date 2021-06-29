@@ -4,15 +4,26 @@ use bson::{doc, oid::ObjectId};
 use futures::StreamExt;
 use log::info;
 use mongodb::{
-    options::{ClientOptions, FindOptions, ResolverConfig, UpdateModifications, UpdateOptions},
-    results::{DeleteResult, UpdateResult},
+    options::{
+        ClientOptions, FindOptions, InsertManyOptions, ResolverConfig, UpdateModifications,
+        UpdateOptions,
+    },
+    results::{DeleteResult, InsertManyResult, UpdateResult},
     Client, Collection,
 };
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     config,
-    model::{rule::Rule, token_data::TokenData},
+    model::{real_transaction::RealTransaction, rule::Rule, token_data::TokenData},
 };
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Balance {
+    #[serde(rename = "_id")]
+    account_id: String,
+    balance: f64,
+}
 
 #[derive(Debug)]
 pub enum Error {
@@ -44,6 +55,8 @@ type Result<T> = std::result::Result<T, Error>;
 pub struct Database {
     rules: Collection<Rule>,
     authentication: Collection<TokenData>,
+    balances: Collection<Balance>,
+    database: mongodb::Database,
 }
 
 impl Database {
@@ -64,12 +77,15 @@ impl Database {
         let database = client.database("ledger");
         let rules = database.collection_with_type::<Rule>("rules");
         let authentication = database.collection_with_type::<TokenData>("auth");
+        let balances = database.collection_with_type::<Balance>("balances");
 
         info!("Connected to MongoDB! This took {:?}", start.elapsed());
 
         let db = Database {
             rules,
             authentication,
+            balances,
+            database,
         };
 
         Ok(db)
@@ -138,6 +154,59 @@ impl Database {
         } else {
             self.authentication.delete_one(doc![], None).await?;
         }
+        Ok(())
+    }
+
+    // TRANSACTIONS CACHE
+
+    pub async fn get_transactions<T>(&self, account_id: &str) -> Result<Vec<T>>
+    where
+        T: DeserializeOwned,
+    {
+        let collection = self.database.collection(account_id);
+        Ok(collection
+            .find(None, None)
+            .await?
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .flatten()
+            .flat_map(bson::from_document::<T>)
+            .collect())
+    }
+
+    pub async fn cache_transactions(
+        &self,
+        account_id: &str,
+        real_transactions: &[impl RealTransaction],
+    ) -> Result<InsertManyResult> {
+        let collection = self.database.collection(account_id);
+        let docs = real_transactions.iter().flat_map(|t| t.to_doc());
+        let options = InsertManyOptions::builder().ordered(false).build();
+        Ok(collection.insert_many(docs, options).await?)
+    }
+
+    // BALANCE CACHE
+
+    pub async fn get_balance(&self, account_id: &str) -> Result<f64> {
+        let doc = self
+            .balances
+            .find_one(doc!["_id": account_id], None)
+            .await?
+            .map(|b| b.balance)
+            .unwrap_or_default();
+        Ok(doc)
+    }
+
+    pub async fn cache_balance(&self, account_id: &str, balance: f64) -> Result<()> {
+        let options = UpdateOptions::builder().upsert(true).build();
+        let update = UpdateModifications::Document(bson::to_document(&Balance {
+            account_id: account_id.to_string(),
+            balance,
+        })?);
+        self.balances
+            .update_one(doc!["_id": account_id], update, options)
+            .await?;
         Ok(())
     }
 }

@@ -6,7 +6,7 @@ use super::{
 };
 use crate::ib::IbTransaction;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum SourceTransaction {
     N26(N26Transaction),

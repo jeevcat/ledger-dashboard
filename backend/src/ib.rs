@@ -3,10 +3,9 @@ use std::time::Duration;
 use actix::clock::delay_for;
 use actix_web::web::Buf;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
 use chrono::NaiveDate;
 use log::info;
-use rust_decimal::Decimal;
+use rust_decimal::{prelude::ToPrimitive, Decimal};
 use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_reader;
 
@@ -83,7 +82,7 @@ struct CashReports {
     items: Vec<CashReport>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Trade {
     currency: String,
@@ -92,13 +91,13 @@ pub struct Trade {
     #[serde(rename = "transactionID")]
     transaction_id: String,
     date_time: String,
-    quantity: u32,
+    quantity: i32,
     trade_price: Decimal,
     trade_money: Decimal,
     ib_commission: Decimal,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CashTransaction {
     currency: String,
@@ -115,7 +114,7 @@ struct OpenPosition {
     currency: String,
     symbol: String,
     description: String,
-    position: u32,
+    position: i32,
     mark_price: Decimal,
     position_value: Decimal,
 }
@@ -127,7 +126,7 @@ struct CashReport {
     ending_cash: Decimal,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum IbTransaction {
     Cash(CashTransaction),
@@ -161,8 +160,7 @@ impl RealTransaction for IbTransaction {
     }
 }
 
-#[cached(time = 600)]
-pub async fn get_balance() -> Decimal {
+pub async fn get_balance() -> f64 {
     let token = config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
     let query_id =
         config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
@@ -181,7 +179,7 @@ pub async fn get_balance() -> Decimal {
         .find(|c| c.currency == "BASE_SUMMARY")
         .unwrap()
         .ending_cash;
-    position_sum + cash_sum
+    (position_sum + cash_sum).to_f64().unwrap()
 }
 
 async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
@@ -238,7 +236,6 @@ async fn fetch_flex_statement(token: String, query_id: String) -> FlexStatement 
 
 /// Returns statement reference code
 /// Cache this for a day so we avoid re-queueing flex statement requests
-#[cached(time = 86400)]
 async fn enqueue_flex_statement_request(token: String, query_id: String) -> String {
     let url = format!("https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest?t={}&q={}&v=3", token, query_id);
     let response: FlexStatementRequestResponse = retried_request(&url).await;
@@ -273,7 +270,7 @@ impl ImportAccount for Ib {
         get_transactions().await
     }
 
-    async fn get_balance(&self) -> Decimal {
+    async fn get_balance(&self) -> f64 {
         get_balance().await
     }
 

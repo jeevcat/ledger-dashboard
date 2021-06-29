@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 
+use bson::Document;
 use chrono::{NaiveDate, NaiveDateTime};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
 
 use super::real_transaction::RealTransaction;
 
@@ -11,12 +10,12 @@ use super::real_transaction::RealTransaction;
 #[serde(rename_all = "camelCase")]
 pub struct N26Transaction {
     id: String,
-    pub amount: Decimal,
+    pub amount: f64,
     pub currency_code: String,
     #[serde(rename = "visibleTS")]
     visible_ts: i64,
     #[serde(flatten)]
-    extra: Map<String, Value>,
+    extra: Document,
 }
 
 impl RealTransaction for N26Transaction {

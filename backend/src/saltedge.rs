@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use async_trait::async_trait;
-use cached::proc_macro::cached;
 use log::info;
 use serde::{de::DeserializeOwned, Deserialize};
 
@@ -43,13 +42,11 @@ where
     response.json::<SaltEdgeResponse<T>>().await.unwrap().data
 }
 
-#[cached(time = 600)]
 async fn fetch_transactions() -> Vec<SaltEdgeTransaction> {
     let url = "https://www.saltedge.com/api/v5/transactions";
     request(url).await
 }
 
-#[cached(time = 600)]
 async fn fetch_accounts() -> Vec<SaltEdgeAccount> {
     let url = "https://www.saltedge.com/api/v5/accounts";
     request(url).await
@@ -72,7 +69,7 @@ impl ImportAccount for SaltEdge {
         transactions
     }
 
-    async fn get_balance(&self) -> rust_decimal::Decimal {
+    async fn get_balance(&self) -> f64 {
         let accounts = fetch_accounts().await;
         accounts
             .iter()

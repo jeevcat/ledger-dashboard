@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Debug};
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
@@ -9,7 +9,7 @@ use super::{
     rule::RulePosting,
 };
 
-pub trait RealTransaction: Serialize {
+pub trait RealTransaction: Serialize + DeserializeOwned + Send + Sync + Debug {
     fn get_id(&self) -> Cow<str>;
     fn get_date(&self) -> NaiveDate;
     fn get_default_amount_field_name(&self) -> &str;
@@ -49,6 +49,14 @@ pub trait RealTransaction: Serialize {
             return serde_json::to_value(obj).unwrap();
         }
         val
+    }
+
+    fn to_doc(&self) -> Result<bson::Document, bson::ser::Error> {
+        let mut doc = bson::to_document(self).unwrap();
+        if !doc.contains_key("_id") {
+            doc.insert("_id", self.get_id().as_ref());
+        }
+        Ok(doc)
     }
 
     fn get_amount(&self, rule_posting: &RulePosting) -> Option<Decimal> {

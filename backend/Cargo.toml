@@ -32,7 +32,6 @@ rust_decimal = { version ="1", features = ["serde-float"] }
 
 regex = "1"
 handlebars = "3"
-cached = "0.23"
 
 mongodb = "1.2"
 bson = "1.2"

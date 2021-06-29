@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 
+use bson::Document;
 use chrono::NaiveDate;
-use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{Map, Value};
 
 use super::real_transaction::RealTransaction;
 
@@ -13,7 +12,7 @@ const DATE_FMT: &str = "%Y-%m-%d";
 pub struct SaltEdgeTransaction {
     id: String,
     made_on: String,
-    pub amount: Decimal,
+    pub amount: f64,
     pub currency_code: String,
     duplicated: bool,
     mode: String,
@@ -24,16 +23,16 @@ pub struct SaltEdgeTransaction {
     created_at: String,
     updated_at: String,
     #[serde(flatten, deserialize_with = "deserialize_extra")]
-    extra: Map<String, Value>,
+    extra: Document,
 }
 
-fn deserialize_extra<'de, D>(deserializer: D) -> Result<Map<String, Value>, D::Error>
+fn deserialize_extra<'de, D>(deserializer: D) -> Result<Document, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let helper = Map::<String, Value>::deserialize(deserializer)?;
+    let helper = Document::deserialize(deserializer)?;
     if let Some(extra) = helper.get("extra") {
-        return Ok(extra.as_object().unwrap().clone());
+        return Ok(extra.as_document().unwrap().clone());
     }
     Ok(helper)
 }
@@ -91,7 +90,10 @@ mod tests {
         println!("{:#?}", deserialized);
         assert_eq!(deserialized.id, "444444444444444444");
         assert_eq!(deserialized.made_on, "2020-05-03");
-        assert_eq!(deserialized.amount, Decimal::from_f32(-200.).unwrap());
+        assert_eq!(
+            Decimal::from_f64(deserialized.amount).unwrap(),
+            Decimal::from_f32(-200.).unwrap()
+        );
         assert_eq!(deserialized.currency_code, "USD");
     }
 }
