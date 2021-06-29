@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{dev::HttpServiceFactory, error::InternalError, web, HttpResponse};
-use log::error;
+use log::{error, info};
 
 use crate::{
     db::Database, ib::Ib, import_account::ImportAccount, model::rule::Rule, n26::N26,
@@ -46,25 +46,30 @@ async fn rules_get<T>(
 where
     T: ImportAccount,
 {
-    HttpResponse::Ok().json(db.get_all_rules(Some(import_account.get_id())))
+    HttpResponse::Ok().json(
+        db.get_all_rules(Some(import_account.get_id()))
+            .await
+            .unwrap(),
+    )
 }
 
 async fn rules_add<T>(rule: web::Json<Rule>, db: web::Data<Arc<Database>>) -> HttpResponse
 where
     T: ImportAccount,
 {
-    db.create_or_update_rule(rule.into_inner());
-    HttpResponse::Ok().finish()
+    let result = db.create_or_update_rule(rule.into_inner()).await.unwrap();
+    HttpResponse::Ok().json(result)
 }
 
-async fn get_rule(rule_id: web::Path<u32>, db: web::Data<Arc<Database>>) -> HttpResponse {
-    match db.get_rule(*rule_id) {
+async fn get_rule(rule_id: web::Path<String>, db: web::Data<Arc<Database>>) -> HttpResponse {
+    info!("Get rule {}", &*rule_id);
+    match db.get_rule(&*rule_id).await.unwrap() {
         Some(r) => HttpResponse::Ok().json(r),
         None => HttpResponse::NotFound().finish(),
     }
 }
 
-async fn delete_rule(rule_id: web::Path<u32>, db: web::Data<Arc<Database>>) -> HttpResponse {
-    db.delete_rule(*rule_id);
-    HttpResponse::Ok().finish()
+async fn delete_rule(rule_id: web::Path<String>, db: web::Data<Arc<Database>>) -> HttpResponse {
+    let result = db.delete_rule(&*rule_id).await.unwrap();
+    HttpResponse::Ok().json(result)
 }

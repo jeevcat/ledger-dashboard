@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub async fn run_server() -> io::Result<()> {
-    let db = Arc::new(db::Database::new());
+    let db = Arc::new(db::Database::new().await.unwrap());
     let n26 = Arc::new(n26::N26::new(db.clone()));
     let saltedge = Arc::new(SaltEdge);
     let ib = Arc::new(Ib);

@@ -278,7 +278,7 @@ impl ImportAccount for Ib {
     }
 
     fn get_hledger_account(&self) -> &str {
-        "Assets:Investments:IB"
+        "Assets:Cash:IB"
     }
 
     fn get_id(&self) -> &str {

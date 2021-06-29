@@ -33,7 +33,8 @@ pub struct RulePosting {
 #[serde(default)]
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
-    pub id: u32,
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<bson::oid::ObjectId>,
     pub priority: i32,
     pub importer_id: String,
     pub rule_name: String,

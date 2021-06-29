@@ -44,16 +44,14 @@ pub fn ib_flex_transactions_query_id() -> Option<String> {
     env::var("IB_FLEX_TRANSACTIONS_QUERY_ID").ok()
 }
 
-/// Relative to journal repo root if journal_repo_url is supplied
-/// Otherwise absolute
-pub fn journal_path() -> Option<String> {
-    env::var("JOURNAL_PATH").ok()
+pub fn mongodb_url() -> String {
+    env::var("MONGODB_URL").expect("MONGODB_URL must be set!")
 }
 
 /// Relative to journal repo root if journal_repo_url is supplied
 /// Otherwise absolute
-pub fn database_path() -> Option<String> {
-    env::var("DATABASE_PATH").ok()
+pub fn journal_path() -> Option<String> {
+    env::var("JOURNAL_PATH").ok()
 }
 
 pub fn journal_repo_url() -> String {

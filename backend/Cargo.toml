@@ -30,10 +30,12 @@ serde-xml-rs = "0.4"
 csv = "1"
 rust_decimal = { version ="1", features = ["serde-float"] }
 
-rustbreak = { version = "2.0.0", features = ["yaml_enc"] }
 regex = "1"
 handlebars = "3"
 cached = "0.23"
+
+mongodb = "1.2"
+bson = "1.2"
 
 git2 = "0.13"
 base64 = "0.13"

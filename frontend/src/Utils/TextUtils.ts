@@ -22,7 +22,6 @@ export function asCurrency(amount: number, currency: string, cents: boolean = tr
     style: "currency",
     currency: currency,
     maximumFractionDigits: cents ? precision : 0,
-    minimumFractionDigits: cents ? precision : 0,
   });
   return formatter.format(amount);
 }

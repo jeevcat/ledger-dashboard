@@ -35,10 +35,6 @@ pub fn get_prices_file() -> Option<PathBuf> {
     Some(get_journal_path()?.join("prices.ledger"))
 }
 
-pub fn get_database_file(filename: &str) -> Option<PathBuf> {
-    Some(get_database_path()?.join(filename))
-}
-
 pub fn get_repo_path() -> Option<PathBuf> {
     let repo_url = config::journal_repo_url();
     let (_, repo_name) = repo_url.rsplit_once("/")?;
@@ -80,23 +76,10 @@ fn get_repo_journal_path() -> Option<PathBuf> {
     Some(root.join(config::journal_path()?))
 }
 
-fn get_repo_database_path() -> Option<PathBuf> {
-    let root = get_repo_path()?;
-    Some(root.join(config::database_path()?))
-}
-
 fn get_ledger_file() -> Option<PathBuf> {
     Some(
         PathBuf::from(option_env!("LEDGER_FILE")?)
             .parent()?
             .to_path_buf(),
     )
-}
-
-fn get_database_path() -> Option<PathBuf> {
-    get_repo_database_path().or_else(|| {
-        config::database_path()
-            .map(PathBuf::from)
-            .or_else(get_root_path)
-    })
 }

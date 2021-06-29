@@ -57,7 +57,7 @@ where
         .await;
 
     // Get rules
-    let rules = get_rules(&db, &***import_account);
+    let rules = get_rules(&db, &***import_account).await;
 
     let import_hledger_account = import_account.get_hledger_account();
 
@@ -87,7 +87,7 @@ where
     let hledger_transactions = hledger.fetch_account_transactions(&[account]).await;
 
     // Get rules
-    let rules = get_rules(&db, &***import_account);
+    let rules = get_rules(&db, &***import_account).await;
 
     let mut generated: Vec<HledgerTransaction> = transactions::get_generated_transactions(
         account,
@@ -134,7 +134,7 @@ where
         .collect();
 
     // Get rules
-    let rules = get_rules(&db, &***import_account);
+    let rules = get_rules(&db, &***import_account).await;
 
     let unmatched: Vec<TransactionResponse> = real_transactions
         .into_iter()
@@ -241,6 +241,8 @@ where
     HttpResponse::Ok().json(json!({ "dupe_ids": dupe_ids }))
 }
 
-fn get_rules(db: &Database, import_account: &impl ImportAccount) -> Vec<Rule> {
+async fn get_rules(db: &Database, import_account: &impl ImportAccount) -> Vec<Rule> {
     db.get_all_rules(Some(import_account.get_id()))
+        .await
+        .unwrap()
 }

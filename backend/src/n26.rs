@@ -125,30 +125,30 @@ impl N26 {
 
     /// Returns false if a new authentication flow is needed
     pub async fn attempt_refresh_authentication(&self) -> bool {
-        if let Some(auth) = self.get_authentication().as_ref() {
+        if let Some(auth) = self.get_authentication().await.as_ref() {
             if auth.is_valid() {
                 // Don't need to refresh or reauthenticate
                 return true;
             }
             let new_auth = self.refresh_authentication().await;
             if let Some(new_auth) = new_auth {
-                self.set_authentication(new_auth);
+                self.set_authentication(new_auth).await;
                 return true;
             }
         }
         false
     }
 
-    fn get_authentication(&self) -> Option<TokenData> {
-        self.db.get_auth()
+    async fn get_authentication(&self) -> Option<TokenData> {
+        self.db.get_auth().await.unwrap()
     }
 
-    fn set_authentication(&self, new_authentication: TokenData) {
-        self.db.set_auth(Some(new_authentication))
+    async fn set_authentication(&self, new_authentication: TokenData) {
+        self.db.set_auth(Some(new_authentication)).await.unwrap()
     }
 
-    fn clear_authentication(&self) {
-        self.db.set_auth(None)
+    async fn clear_authentication(&self) {
+        self.db.set_auth(None).await.unwrap()
     }
 
     /* Authenication flow:
@@ -174,7 +174,7 @@ impl N26 {
             new_auth.update_expiration_time();
             if new_auth.is_valid() {
                 info!("Successfully got access token: {}", new_auth.access_token);
-                self.set_authentication(new_auth);
+                self.set_authentication(new_auth).await;
                 return;
             }
         }
@@ -183,7 +183,7 @@ impl N26 {
 
     /// Refreshes an existing authentication using a (possibly expired) refresh token
     async fn refresh_authentication(&self) -> Option<TokenData> {
-        let refresh_token = self.get_authentication().as_ref().expect("Can't refresh token since no existing token data was found. Please initiate a new authentication instead.").refresh_token.clone();
+        let refresh_token = self.get_authentication().await.as_ref().expect("Can't refresh token since no existing token data was found. Please initiate a new authentication instead.").refresh_token.clone();
         info!(
             "Trying to refresh access token using refresh token {}",
             &refresh_token
@@ -194,7 +194,7 @@ impl N26 {
                 return Some(new_auth);
             }
         } else {
-            self.clear_authentication();
+            self.clear_authentication().await;
         }
         None
     }
@@ -217,6 +217,7 @@ impl N26 {
             self.authenticate().await;
         }
         self.get_authentication()
+            .await
             .expect("Failed to get token!")
             .access_token
     }
