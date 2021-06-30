@@ -11,14 +11,20 @@ import { TransactionRequest } from "../Models/TransactionRequest";
 const host =
   !process.env.NODE_ENV || process.env.NODE_ENV === "development" ? "" : "https://ledger-backend.azurewebsites.net";
 
-export const getExistingTransactions = (account: ImportAccount): Promise<TransactionResponse[]> =>
-  get(`transactions/existing/${account.id}`);
+export const getExistingTransactions = (account: ImportAccount, bypassCache: boolean): Promise<TransactionResponse[]> =>
+  get(`transactions/existing/${account.id}`, { bypass_cache: bypassCache.toString() });
 
-export const getGeneratedTransactions = (account: ImportAccount): Promise<TransactionResponse[]> =>
-  get(`transactions/generated/${account.id}`);
+export const getGeneratedTransactions = (
+  account: ImportAccount,
+  bypassCache: boolean
+): Promise<TransactionResponse[]> =>
+  get(`transactions/generated/${account.id}`, { bypass_cache: bypassCache.toString() });
 
-export const getUnmatchedTransactions = (account: ImportAccount): Promise<TransactionResponse[]> =>
-  get(`transactions/unmatched/${account.id}`);
+export const getUnmatchedTransactions = (
+  account: ImportAccount,
+  bypassCache: boolean
+): Promise<TransactionResponse[]> =>
+  get(`transactions/unmatched/${account.id}`, { bypass_cache: bypassCache.toString() });
 
 export const writeGeneratedTransactions = (account: ImportAccount) => post(`transactions/write/${account.id}`);
 
@@ -33,7 +39,8 @@ export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
 
-export const getBalance = (account: ImportAccount): Promise<Balance> => get(`balance/${account.id}`);
+export const getBalance = (account: ImportAccount, bypassCache: boolean): Promise<Balance> =>
+  get(`balance/${account.id}`, { bypass_cache: bypassCache.toString() });
 
 export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatementResponse> => {
   const query: Record<string, string> = {};

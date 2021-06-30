@@ -25,8 +25,11 @@ export const AccountsComponent: React.FC = () => {
             <Table.Row>
               <Table.HeaderCell>Account</Table.HeaderCell>
               <Table.HeaderCell>Real Balance</Table.HeaderCell>
-              <Table.HeaderCell><i>hledger</i> Balance</Table.HeaderCell>
+              <Table.HeaderCell>
+                <i>hledger</i> Balance
+              </Table.HeaderCell>
               <Table.HeaderCell>In Sync</Table.HeaderCell>
+              <Table.HeaderCell textAlign="center">Refresh</Table.HeaderCell>
               <Table.HeaderCell textAlign="center">Import</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
@@ -46,6 +49,7 @@ export const AccountsComponent: React.FC = () => {
                   </span>
                 )}
               </Table.HeaderCell>
+              <Table.HeaderCell />
               <Table.HeaderCell />
             </Table.Row>
           </Table.Footer>

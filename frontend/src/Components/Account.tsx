@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Icon, Loader, Table, TableCell } from "semantic-ui-react";
+import { Button, Icon, Loader, Popup, Table, TableCell } from "semantic-ui-react";
 import { Balance } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { getBalance } from "../Utils/BackendRequester";
@@ -13,19 +13,36 @@ interface Props {
 
 export const AccountComponent: React.FC<Props> = ({ account, onUpdate }) => {
   const [balance, setBalance] = useState<Balance>();
-  const [failure, setFailure] = useState<boolean>(false);
+  const [failure, setFailure] = useState(false);
+  const [bypassCache, setBypassCache] = useState(false);
+
+  const updateBalance = useCallback(
+    (bypassCache: boolean) => {
+      setBalance(undefined);
+      getBalance(account, bypassCache)
+        .then((balance) => {
+          setBalance(balance);
+          setFailure(false);
+          onUpdate(account.id, balance);
+        })
+        .catch((e) => {
+          console.error(e);
+          setFailure(true);
+        })
+        .finally(() => setBypassCache(false));
+    },
+    [account, onUpdate]
+  );
+
   useEffect(() => {
-    getBalance(account)
-      .then((balance) => {
-        setBalance(balance);
-        setFailure(false);
-        onUpdate(account.id, balance);
-      })
-      .catch((e) => {
-        console.error(e);
-        setFailure(true);
-      });
-  }, [account, onUpdate]);
+    if (bypassCache) {
+      updateBalance(true);
+    }
+  }, [updateBalance, bypassCache]);
+
+  useEffect(() => {
+    updateBalance(false);
+  }, [updateBalance]);
 
   const cells = () => {
     if (failure) {
@@ -67,6 +84,11 @@ export const AccountComponent: React.FC<Props> = ({ account, onUpdate }) => {
     <Table.Row>
       <Table.Cell>{account.humanName}</Table.Cell>
       {cells()}
+      <Table.Cell textAlign="center">
+        <Popup size="mini" trigger={<Button icon="refresh" onClick={() => setBypassCache(true)} />}>
+          Request updated data from external API
+        </Popup>
+      </Table.Cell>
       <Table.Cell textAlign="center">
         <Link to={`/import/${account.id}`}>
           <Button icon="sign-in" />

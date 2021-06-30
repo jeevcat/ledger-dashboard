@@ -8,7 +8,7 @@ use mongodb::{
         ClientOptions, FindOptions, InsertManyOptions, ResolverConfig, UpdateModifications,
         UpdateOptions,
     },
-    results::{DeleteResult, InsertManyResult, UpdateResult},
+    results::{DeleteResult, UpdateResult},
     Client, Collection,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -179,11 +179,19 @@ impl Database {
         &self,
         account_id: &str,
         real_transactions: &[impl RealTransaction],
-    ) -> Result<InsertManyResult> {
+    ) -> Result<()> {
         let collection = self.database.collection(account_id);
         let docs = real_transactions.iter().flat_map(|t| t.to_doc());
         let options = InsertManyOptions::builder().ordered(false).build();
-        Ok(collection.insert_many(docs, options).await?)
+        let result = collection.insert_many(docs, options).await;
+        // Swallow BulkWriteErrors as these are thrown when duplicate keys exist
+        if let Err(e) = &result {
+            if matches!(*e.kind, mongodb::error::ErrorKind::BulkWriteError(_)) {
+                return Ok(());
+            }
+        }
+        result?;
+        Ok(())
     }
 
     // BALANCE CACHE

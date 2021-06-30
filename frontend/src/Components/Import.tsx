@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { matchPath, Redirect, Route, Switch, useHistory, useParams, useRouteMatch } from "react-router-dom";
-import { Header, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
+import { Button, Header, Icon, Image, Loader, Menu, MenuItemProps, Segment } from "semantic-ui-react";
 import { ImportAccounts } from "../Models/ImportAccount";
 import { RealTransactionField, TransactionResponse } from "../Models/ImportRow";
 import { AccountsContextComponent } from "../Utils/AccountsContext";
@@ -51,16 +51,50 @@ export const Import: React.FC = () => {
     path: `${path}/:tabId`,
   })?.params.tabId;
 
+  const accountPath = matchPath<{ accountName: string }>(url, {
+    path: path,
+  })?.params.accountName!;
+  const account = ImportAccounts.find((k) => k.id === accountPath);
+
   const [tabId, setTabId] = useState<TransactionTabType>(initialTabId ?? TransactionTabType.Hledger);
   const [areTransactionsLoading, setAreTransactionsLoading] = useState(false);
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [realTransactionFields, setRealTransactionFields] = useState<RealTransactionField[]>([]);
   const [filter, setFilter] = useState("");
+  const [bypassCache, setBypassCache] = useState(false);
+
+  const fetchTransactions = useCallback(
+    (bypassCache?: boolean) => {
+      const newTab = tabs[tabId];
+      if (newTab !== undefined && newTab.transactionSource !== undefined && account !== undefined) {
+        setAreTransactionsLoading(true);
+        newTab
+          .transactionSource(account, bypassCache ?? false)
+          .then((data: TransactionResponse[]) => {
+            setTransactions(data);
+            setRealTransactionFields(collectRealTransactionFields(data));
+            setBypassCache(false);
+          })
+          .catch((e) => {
+            console.error(`Couldn't fetch transactions: ${e}`);
+          })
+          .finally(() => {
+            setAreTransactionsLoading(false);
+          });
+      }
+    },
+    [account, tabId]
+  );
 
   useEffect(() => {
-    fetchTransactions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId]);
+    fetchTransactions(false);
+  }, [fetchTransactions]);
+
+  useEffect(() => {
+    if (bypassCache) {
+      fetchTransactions(true);
+    }
+  }, [bypassCache, fetchTransactions]);
 
   const handleTabClick = (_: any, data: MenuItemProps) => {
     history.push(url + "/" + data.id);
@@ -69,25 +103,6 @@ export const Import: React.FC = () => {
 
   const collectRealTransactionFields = (ts: TransactionResponse[]): RealTransactionField[] =>
     Array.from(new Set(ts.flatMap((t) => Object.keys(t.real_transaction ?? ""))) as Set<RealTransactionField>).sort();
-
-  const fetchTransactions = () => {
-    const newTab = tabs[tabId];
-    if (newTab !== undefined && newTab.transactionSource !== undefined && account !== undefined) {
-      setAreTransactionsLoading(true);
-      newTab
-        .transactionSource(account)
-        .then((data: TransactionResponse[]) => {
-          setTransactions(data);
-          setRealTransactionFields(collectRealTransactionFields(data));
-        })
-        .catch((e) => {
-          console.error(`Couldn't fetch transactions: ${e}`);
-        })
-        .finally(() => {
-          setAreTransactionsLoading(false);
-        });
-    }
-  };
 
   const getFilteredTransactions = (): TransactionResponse[] =>
     transactions.filter((t) =>
@@ -98,10 +113,6 @@ export const Import: React.FC = () => {
         : true
     );
 
-  const accountPath = matchPath<{ accountName: string }>(url, {
-    path: path,
-  })?.params.accountName!;
-  const account = ImportAccounts.find((k) => k.id === accountPath);
   if (account === undefined) {
     return (
       <Header textAlign="center" as="h1" style={{ marginTop: "1em" }}>
@@ -147,9 +158,17 @@ export const Import: React.FC = () => {
             onClick={handleTabClick}
           />
         ))}
-        <Menu.Item position="right">
-          <RecordTransactionsButton account={account} onGenerate={fetchTransactions} />
-        </Menu.Item>
+        <Menu.Menu position="right">
+          <Menu.Item fitted>
+            <Button positive basic icon labelPosition="right" onClick={() => setBypassCache(true)}>
+              Request updated data
+              <Icon name="refresh" />
+            </Button>
+          </Menu.Item>
+          <Menu.Item fitted>
+            <RecordTransactionsButton account={account} onGenerate={fetchTransactions} />
+          </Menu.Item>
+        </Menu.Menu>
       </Menu>
 
       <Segment attached="bottom">
