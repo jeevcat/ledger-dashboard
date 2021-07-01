@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     iter::FromIterator,
     sync::Arc,
+    time::Instant,
 };
 
 use actix_web::{web, HttpResponse};
@@ -31,12 +32,15 @@ pub async fn get_existing_transactions<T>(
 where
     T: ImportAccount + Sync,
 {
+    let start = Instant::now();
     // Get real transactions
     let real_transactions = import_account
         .get_transactions_cached(&db, query.bypass_cache())
         .await;
 
-    // Get recorded transactions
+    info!("Fetched real transactions ({:?})", start.elapsed());
+
+    // Get existing transactions
     let existing =
         transactions::get_existing_transactions(&***import_account, &hledger, real_transactions)
             .await;
@@ -54,18 +58,29 @@ pub async fn get_generated_transactions<T>(
 where
     T: ImportAccount + Sync,
 {
+    let start = Instant::now();
+
     // Get real transactions
     let real_transactions = import_account
         .get_transactions_cached(&db, query.bypass_cache())
         .await;
 
-    // Get recorded transactions
+    info!("Fetched real transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
+    // Get hledger transactions
     let hledger_transactions = hledger
         .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
 
+    info!("Fetched hledger transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     // Get rules
     let rules = get_rules(&db, &***import_account).await;
+
+    info!("Fetched rules ({:?})", start.elapsed());
+    let start = Instant::now();
 
     let import_hledger_account = import_account.get_hledger_account();
 
@@ -75,6 +90,8 @@ where
         &real_transactions,
         &rules,
     );
+
+    info!("Generated transactions ({:?})", start.elapsed());
 
     HttpResponse::Ok().json(generated)
 }
@@ -88,17 +105,28 @@ pub async fn write_generated_transactions<T>(
 where
     T: ImportAccount + Sync,
 {
+    let start = Instant::now();
+
     // Get real transactions
     let real_transactions = import_account
         .get_transactions_cached(&db, query.bypass_cache())
         .await;
 
+    info!("Fetched real transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     let account = import_account.get_hledger_account();
-    // Get recorded transactions
+    // Get hledger transactions
     let hledger_transactions = hledger.fetch_account_transactions(&[account]).await;
+
+    info!("Fetched hledger transactions ({:?})", start.elapsed());
+    let start = Instant::now();
 
     // Get rules
     let rules = get_rules(&db, &***import_account).await;
+
+    info!("Fetched rules ({:?})", start.elapsed());
+    let start = Instant::now();
 
     let mut generated: Vec<HledgerTransaction> = transactions::get_generated_transactions(
         account,
@@ -110,9 +138,18 @@ where
     .filter_map(|t| t.hledger_transaction)
     .collect();
 
+    info!("Generated transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     generated.sort_by_key(|a| a.get_date(Some(account)));
+
+    info!("Sorted transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     info!("Writing {} transactions to hledger", generated.len());
     let result = hledger.write_transactions(&generated).await;
+
+    info!("Wrote transactions ({:?})", start.elapsed());
 
     if result {
         HttpResponse::Created().finish()
@@ -131,30 +168,47 @@ pub async fn get_unmatched_transactions<T>(
 where
     T: ImportAccount + Sync,
 {
+    let start = Instant::now();
     // Get real transactions
     let real_transactions = import_account
         .get_transactions_cached(&db, query.bypass_cache())
         .await;
 
-    // Get recorded transactions
+    info!("Fetched real transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
+    // Get hledger transactions
     let hledger_transactions = hledger
         .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
+
+    info!("Fetched hledger transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     let account = import_account.get_hledger_account();
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
-    let recorded_ids: HashSet<&str> = hledger_transactions
+    let hledger_ids: HashSet<&str> = hledger_transactions
         .iter()
         .flat_map(|t| t.get_all_ids(account))
         .collect();
 
+    info!(
+        "Collected unique hledger transaction ids ({:?})",
+        start.elapsed()
+    );
+    let start = Instant::now();
+
     // Get rules
     let rules = get_rules(&db, &***import_account).await;
+
+    info!("Fetched rules ({:?})", start.elapsed());
+    let start = Instant::now();
 
     let unmatched: Vec<TransactionResponse> = real_transactions
         .into_iter()
         // Only real transactions which haven't already been recorded
         .filter(|real| {
-            !recorded_ids.contains(&*real.get_id()) && !rules.iter().any(|rule| rule.matches(real))
+            !hledger_ids.contains(&*real.get_id()) && !rules.iter().any(|rule| rule.matches(real))
         })
         .map(|real| TransactionResponse {
             real_transaction: real.to_json_value(),
@@ -162,6 +216,8 @@ where
             rule: None,
         })
         .collect();
+
+    info!("Calculated unmatched ({:?})", start.elapsed());
 
     HttpResponse::Ok().json(unmatched)
 }
@@ -241,17 +297,17 @@ pub async fn check<T>(
 where
     T: ImportAccount,
 {
-    // Get recorded transactions
+    // Get hledger transactions
     let hledger_transactions = hledger
         .fetch_account_transactions(&[import_account.get_hledger_account()])
         .await;
 
     let account = import_account.get_hledger_account();
-    let mut recorded_ids: HashSet<&str> = HashSet::new();
+    let mut hledger_ids: HashSet<&str> = HashSet::new();
     let mut dupe_ids: HashSet<&str> = HashSet::new();
     for t in hledger_transactions.iter() {
         for id in t.get_all_ids(account) {
-            let was_first = recorded_ids.insert(id);
+            let was_first = hledger_ids.insert(id);
             if !was_first {
                 dupe_ids.insert(id);
             }

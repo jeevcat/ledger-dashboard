@@ -29,7 +29,7 @@ where
         .await;
     let account = import_account.get_hledger_account();
     let hledger = match hledger.get_account_balance(account).await {
-        Some(recorded) => recorded,
+        Some(hledger) => hledger,
         None => return HttpResponse::InternalServerError().finish(),
     };
     let response = BalanceResponse { hledger, real };

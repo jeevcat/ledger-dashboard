@@ -64,7 +64,7 @@ lazy_static! {
         ]"#,
     )
     .unwrap();
-    pub static ref RECORDED: Vec<HledgerTransaction> = vec![HledgerTransaction::new_with_postings(
+    pub static ref HLEDGER: Vec<HledgerTransaction> = vec![HledgerTransaction::new_with_postings(
         &REAL[0],
         ASSET_ACCOUNT,
         "My Description",

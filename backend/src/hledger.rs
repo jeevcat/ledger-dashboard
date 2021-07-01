@@ -137,13 +137,13 @@ impl HledgerProcess {
     async fn write_transaction(
         &self,
         http_client: &reqwest::Client,
-        recorded: &HledgerTransaction,
+        hledger: &HledgerTransaction,
     ) -> bool {
-        let json = serde_json::to_string(recorded).unwrap();
+        let json = serde_json::to_string(hledger).unwrap();
         let request_url = format!("{}:{}/add", BASE_URL, self.port);
         info!(
             "Writing transaction ({}) to hledger file {:#?} using url {}",
-            recorded.tdescription, self.journal_file, &request_url
+            hledger.tdescription, self.journal_file, &request_url
         );
         let response = match http_client
             .put(request_url.as_str())
@@ -160,7 +160,7 @@ impl HledgerProcess {
         if response.status().is_success() {
             info!("{:#?}", response);
         } else {
-            error!("{}", serde_json::to_string_pretty(recorded).unwrap());
+            error!("{}", serde_json::to_string_pretty(hledger).unwrap());
             error!("{:#?}", response);
             error!("{}", response.text().await.unwrap());
             return false;
@@ -270,11 +270,11 @@ impl Hledger {
     }
 
     // TODO: proper errors
-    pub async fn write_single_transaction(&self, recorded: &HledgerTransaction) -> bool {
-        if let Some(process) = self.write_processes.get(&recorded.get_date(None).year()) {
+    pub async fn write_single_transaction(&self, hledger: &HledgerTransaction) -> bool {
+        if let Some(process) = self.write_processes.get(&hledger.get_date(None).year()) {
             process.wait_for_hledger_process();
 
-            if !process.write_transaction(&self.http_client, recorded).await {
+            if !process.write_transaction(&self.http_client, hledger).await {
                 return false;
             }
 
@@ -286,8 +286,8 @@ impl Hledger {
     }
 
     // TODO: proper errors
-    pub async fn write_transactions(&self, recorded: &[HledgerTransaction]) -> bool {
-        for t in recorded {
+    pub async fn write_transactions(&self, hledger: &[HledgerTransaction]) -> bool {
+        for t in hledger {
             let year = &t.get_date(None).year();
             if let Some(process) = self.write_processes.get(year) {
                 process.wait_for_hledger_process();

@@ -1,5 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
 
+use log::info;
 use rust_decimal::Decimal;
 
 use crate::{
@@ -23,37 +27,50 @@ where
     J: IntoIterator<Item = K>,
     K: RealTransaction,
 {
-    let real_transactions: HashMap<_, _> = real_transactions
-        .into_iter()
-        .map(move |t| (t.get_id().to_string(), t))
-        .collect();
-
-    let import_hledger_account = import_account.get_hledger_account();
+    let start = Instant::now();
 
     // TODO fix this account array stuff
+    let import_hledger_account = import_account.get_hledger_account();
     let import_hledger_accounts = &[import_hledger_account];
     let hledger_transactions = hledger
         .fetch_account_transactions(import_hledger_accounts)
         .await;
 
+    info!("Fetched hledger transactions ({:?})", start.elapsed());
+    let start = Instant::now();
+
     // Collect unique ids so we can check for duplicates
-    let mut distinct_recorded_ids = HashMap::<&str, u8>::new();
+    let mut distinct_hledger_ids = HashMap::<&str, u8>::new();
     for t in &hledger_transactions {
         for id in t.get_all_ids(import_hledger_account) {
-            let counter = distinct_recorded_ids.entry(id).or_insert(0);
+            let counter = distinct_hledger_ids.entry(id).or_insert(0);
             *counter += 1;
         }
     }
+
+    info!(
+        "Collected unique hledger transaction ids ({:?})",
+        start.elapsed()
+    );
+    let start = Instant::now();
 
     let balance = hledger
         .get_account_balance(import_hledger_account)
         .await
         .unwrap_or_default();
 
+    info!("Got balance ({:?})", start.elapsed());
+    let start = Instant::now();
+
+    let real_transactions: HashMap<_, _> = real_transactions
+        .into_iter()
+        .map(move |t| (t.get_id().to_string(), t))
+        .collect();
+
     // TODO: Remove need for this clone?
     let mut hledger_transactions = hledger_transactions.clone();
     hledger_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
-    hledger_transactions
+    let hledger_transactions = hledger_transactions
         .iter()
         .rev()
         .flat_map(|h| {
@@ -82,17 +99,21 @@ where
             }
             Some(((h, real), (*h_sum, *r_sum)))
         })
-        .map(|((h, r), (recorded_cumulative, real_cumulative))| {
+        .map(|((h, r), (hledger_cumulative, real_cumulative))| {
             let real_json = r.map_or(serde_json::Value::Null, |real| real.to_json_value());
             ExistingTransactionResponse {
                 real_transaction: real_json,
                 hledger_transaction: h.to_owned(),
                 real_cumulative,
-                hledger_cumulative: recorded_cumulative,
-                errors: get_errors(import_account, &distinct_recorded_ids, &r, &h),
+                hledger_cumulative,
+                errors: get_errors(import_account, &distinct_hledger_ids, &r, &h),
             }
         })
-        .collect()
+        .collect();
+
+    info!("Transformed transactions ({:?})", start.elapsed());
+
+    hledger_transactions
 }
 
 pub fn get_generated_transactions(
@@ -104,7 +125,7 @@ pub fn get_generated_transactions(
     let templater = Templater::from_rules(rules);
 
     // Optimization. Collect unique ids so we can quickly check if a transaction HASN'T been recorded.
-    let recorded_ids: HashSet<&str> = hledger_transactions
+    let hledger_ids: HashSet<&str> = hledger_transactions
         .iter()
         .flat_map(|t| t.get_all_ids(hledger_account))
         .collect();
@@ -112,7 +133,7 @@ pub fn get_generated_transactions(
     real_transactions
         .iter()
         // Only real transactions which haven't already been recorded
-        .filter(|real| !recorded_ids.contains(&*real.get_id()))
+        .filter(|real| !hledger_ids.contains(&*real.get_id()))
         // Apply any matching rules to the real transactions
         .filter_map(|real| {
             rules.iter().find_map(|rule| {
@@ -129,7 +150,7 @@ pub fn get_generated_transactions(
 
 fn get_errors(
     import_account: &impl ImportAccount,
-    distinct_recorded_ids: &HashMap<&str, u8>,
+    distinct_hledger_ids: &HashMap<&str, u8>,
     real_transaction: &Option<&impl RealTransaction>,
     hledger_transaction: &HledgerTransaction,
 ) -> Vec<String> {
@@ -137,7 +158,7 @@ fn get_errors(
     let mut errors: Vec<String> = hledger_transaction
         .get_all_ids(import_hledger_account)
         .filter_map(|id| {
-            distinct_recorded_ids.get(id).map(|count| {
+            distinct_hledger_ids.get(id).map(|count| {
                 if count > &1 {
                     Some(format!("Duplicate ID {}", id))
                 } else {
@@ -165,7 +186,7 @@ fn get_errors(
             ));
         }
     } else {
-        errors.push("Recorded transaction without corresponding Real".to_string());
+        errors.push("hledger transaction without corresponding Real".to_string());
     }
 
     errors
@@ -179,12 +200,12 @@ mod tests {
     use super::get_generated_transactions;
     use crate::{
         model::real_transaction::RealTransaction,
-        test_statics::{ASSET_ACCOUNT, EXPENSE_ACCOUNT, REAL, RECORDED, RULES},
+        test_statics::{ASSET_ACCOUNT, EXPENSE_ACCOUNT, HLEDGER, REAL, RULES},
     };
 
     #[test]
     fn generated() {
-        let gen = get_generated_transactions(ASSET_ACCOUNT, &*RECORDED, &*REAL, &*RULES);
+        let gen = get_generated_transactions(ASSET_ACCOUNT, &*HLEDGER, &*REAL, &*RULES);
         // 1st item is filtered as already recorded, 2nd item doesn't match rule
         assert_eq!(gen.len(), 1);
         let gen = &gen[0];
