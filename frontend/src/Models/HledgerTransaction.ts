@@ -22,6 +22,7 @@ export interface Posting {
 
 export interface FormattedAmount {
   formatted: string;
+  value: number;
   positive: boolean;
 }
 
@@ -38,6 +39,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
 
     return {
       formatted: `${sym_amount} ${sym} ${separator} ${cost}`,
+      value,
       positive: value > 0,
     };
   }
@@ -46,6 +48,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
   const cost = asEuro(negative ? -value : value, precision > 0, precision);
   return {
     formatted: cost,
+    value,
     positive: value > 0,
   };
 };
@@ -57,7 +60,11 @@ export interface HledgerTransaction {
   tpostings?: Posting[];
 }
 
-export const getAmount = (t: HledgerTransaction, account: string): FormattedAmount | undefined => {
+export const getHledgerAmount = (t: HledgerTransaction, importAccountId: string): FormattedAmount | undefined => {
+  const account = getMatchingAccount(t, importAccountId);
+  if (!account) {
+    return undefined;
+  }
   for (const p of t.tpostings ?? []) {
     if (p.paccount.toLowerCase().includes(account.toLowerCase())) {
       return getPostingAmount(p);

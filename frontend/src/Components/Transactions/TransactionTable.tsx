@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Table } from "semantic-ui-react";
-import { getId } from "../../Models/HledgerTransaction";
+import { getHledgerAmount } from "../../Models/HledgerTransaction";
+import { getRealAmount } from "../../Models/ImportAccount";
 import { ExistingTransactionResponse, RealTransaction, TransactionResponse } from "../../Models/ImportRow";
+import { AccountsContext } from "../../Utils/AccountsContext";
 import { maxTransactionsPerPage } from "../../Utils/Config";
 import { toTitleCase } from "../../Utils/TextUtils";
 import TransactionTableRow from "./TransactionTableRow";
@@ -13,23 +15,58 @@ interface Props {
   transactions: Response[];
   pageNum: number;
   selectedFields: Columns[];
+  debug: boolean;
   onTransactionWrite: () => void;
 }
 
-export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selectedFields, onTransactionWrite }) => {
-  const [sortedColumn, setSortedColumn] = useState<Columns>("visibleTS");
+export const TransactionTable: React.FC<Props> = ({
+  transactions,
+  pageNum,
+  selectedFields,
+  onTransactionWrite,
+  debug,
+}) => {
+  const {
+    importAccount: { id: importAccountId, dateColumn, amountColumns },
+  } = useContext(AccountsContext);
+
+  const [sortedColumn, setSortedColumn] = useState<Columns>(dateColumn);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending" | undefined>(undefined);
 
-  const handleSort = (clickedColumn: Columns) => {
-    if (sortedColumn !== clickedColumn) {
-      setSortedColumn(clickedColumn);
-      setSortDirection("ascending");
-    } else {
-      setSortDirection(sortDirection === "ascending" ? "descending" : "ascending");
-    }
-  };
+  const handleSort = useCallback(
+    (clickedColumn: Columns) =>
+      setSortedColumn((prevSortedColumn) => {
+        if (prevSortedColumn !== clickedColumn) {
+          setSortDirection("ascending");
+          return clickedColumn;
+        } else {
+          setSortDirection((s) => (s === "ascending" ? "descending" : "ascending"));
+          return prevSortedColumn;
+        }
+      }),
+    []
+  );
+
+  // Default to sorting by date
+  useEffect(() => handleSort(dateColumn), [dateColumn, handleSort]);
 
   const sortCompare = (a: Response, b: Response) => {
+    if (sortedColumn === "amt") {
+      if (a.real_transaction && b.real_transaction) {
+        const valA = getRealAmount(a.real_transaction, amountColumns);
+        const valB = getRealAmount(b.real_transaction, amountColumns);
+        if (valA && valB) {
+          return sortCompareBase(valA, valB);
+        }
+      }
+      if (a.hledger_transaction && b.hledger_transaction) {
+        const valA = getHledgerAmount(a.hledger_transaction, importAccountId);
+        const valB = getHledgerAmount(b.hledger_transaction, importAccountId);
+        if (valA && valB) {
+          return sortCompareBase(valA.value, valB.value);
+        }
+      }
+    }
     if (sortedColumn === "rule" && "rule" in a && "rule" in b && a.rule && b.rule) {
       const valA = a.rule.id;
       const valB = b.rule.id;
@@ -65,39 +102,28 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
 
   const t = transactions[0];
 
+  const header = (column: Columns, children: React.ReactNode) => (
+    <Table.HeaderCell
+      key={column}
+      sorted={sortedColumn === column ? sortDirection : undefined}
+      onClick={() => handleSort(column)}
+    >
+      {children}
+    </Table.HeaderCell>
+  );
+
   return (
     <Table compact celled sortable attached="bottom">
       <Table.Header>
         <Table.Row>
           <Table.HeaderCell />
-          {selectedFields.map((field) => (
-            <Table.HeaderCell
-              key={field}
-              sorted={sortedColumn === field ? sortDirection : undefined}
-              onClick={() => handleSort(field)}
-            >
-              {toTitleCase(field.toString())}
-            </Table.HeaderCell>
-          ))}
-          {"rule" in t && t.rule && (
-            <Table.HeaderCell
-              textAlign="center"
-              sorted={sortedColumn === "rule" ? sortDirection : undefined}
-              onClick={() => handleSort("rule")}
-            >
-              Rule
-            </Table.HeaderCell>
-          )}
-          {"real_cumulative" in t && <Table.HeaderCell>Cumulative</Table.HeaderCell>}
-          {"hledger_cumulative" in t && <Table.HeaderCell>hledger Cumulative</Table.HeaderCell>}
-          {"errors" in t && (
-            <Table.HeaderCell
-              sorted={sortedColumn === "errors" ? sortDirection : undefined}
-              onClick={() => handleSort("errors")}
-            >
-              Errors
-            </Table.HeaderCell>
-          )}
+          {header(dateColumn, "Date")}
+          {header("amt", "Amount")}
+          {selectedFields.map((field) => header(field, toTitleCase(field.toString())))}
+          {"rule" in t && t.rule && header("rule", "Rule")}
+          {debug && "real_cumulative" in t && <Table.HeaderCell>Cumulative</Table.HeaderCell>}
+          {debug && "hledger_cumulative" in t && <Table.HeaderCell>hledger Cumulative</Table.HeaderCell>}
+          {debug && "errors" in t && t.errors && header("errors", "Error")}
           {t.hledger_transaction && (
             <Table.HeaderCell
               collapsing
@@ -113,12 +139,13 @@ export const TransactionTable: React.FC<Props> = ({ transactions, pageNum, selec
         {transactions
           .sort(sortCompare)
           .slice((pageNum - 1) * maxTransactionsPerPage, pageNum * maxTransactionsPerPage)
-          .map((r) => (
+          .map((r, i) => (
             <TransactionTableRow
-              key={r.real_transaction?.id ?? getId(r.hledger_transaction!)}
+              key={i}
               realTransactionFields={selectedFields}
               importRow={r}
               onTransactionWrite={onTransactionWrite}
+              debug={debug}
             />
           ))}
       </Table.Body>

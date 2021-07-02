@@ -41,9 +41,13 @@ const GeneratedTransaction: React.FC<Props> = ({ transaction, account, negative 
       inverted
       size="mini"
       trigger={
-        <Table singleLine>
+        <Table singleLine compact="very">
           <Table.Header>
-            <Table.HeaderCell colSpan={2}>{transaction.tdescription}</Table.HeaderCell>
+            <Table.Row>
+              <Table.HeaderCell style={{ padding: ".4em .6em" }} colSpan={2}>
+                {transaction.tdescription}
+              </Table.HeaderCell>
+            </Table.Row>
           </Table.Header>
           <Table.Body>{transaction.tpostings?.map(posting)}</Table.Body>
         </Table>

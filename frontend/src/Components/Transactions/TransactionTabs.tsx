@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useHistory, useParams, useRouteMatch } from "react-router-dom";
 import {
+  Checkbox,
   Container,
   Dropdown,
   Icon,
@@ -53,6 +54,7 @@ export const TransactionTabs: React.FC<Props> = ({
 
   const [pageNum, setPageNum] = useState<number>(1);
   const [selectedFields, setSelectedFields] = useState<RealTransactionField[]>(defaultColumns);
+  const [debug, setDebug] = useState(false);
 
   useEffect(() => {
     setPageNum(parseInt(page ?? "1"));
@@ -81,6 +83,9 @@ export const TransactionTabs: React.FC<Props> = ({
             }))}
             onChange={(_, data) => setSelectedFields(data.value as string[])}
           />
+          <Menu.Item>
+            <Checkbox label="Debug" onChange={(_, data) => setDebug(data.checked!)} checked={debug} />
+          </Menu.Item>
         </Menu.Menu>
         <Menu.Menu position="right">
           <Pagination
@@ -103,6 +108,7 @@ export const TransactionTabs: React.FC<Props> = ({
           selectedFields={selectedFields}
           transactions={transactions}
           onTransactionWrite={onTransactionWrite}
+          debug={debug}
         />
       ) : (
         <Container textAlign="center">

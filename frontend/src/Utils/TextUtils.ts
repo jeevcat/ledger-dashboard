@@ -27,6 +27,17 @@ export function asCurrency(amount: number, currency: string, cents: boolean = tr
 }
 
 export const asDate = (dateString: string) => {
-  const date: Date = new Date(dateString);
+  let date: Date = new Date(dateString);
+
+  // Support for IB dates, e.g. 20210603;202600
+  if (isNaN(date.getTime())) {
+    // Ignore time
+    const [d] = dateString.split(";");
+    const yyyy = parseInt(d.substring(0, 4));
+    const mm = parseInt(d.substring(4, 6));
+    const dd = parseInt(d.substring(6, 8));
+    date = new Date(yyyy, mm, dd);
+  }
+
   return date.toLocaleDateString("en-DE");
 };

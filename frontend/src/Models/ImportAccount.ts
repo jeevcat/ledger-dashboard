@@ -1,7 +1,7 @@
 import ib from "../Images/ib.png";
 import ing from "../Images/ing.png";
 import n26 from "../Images/n26.png";
-import { RealTransactionField } from "./ImportRow";
+import { RealTransaction, RealTransactionField } from "./ImportRow";
 
 export type ImportAccountType = "ing" | "n26" | "ib";
 
@@ -9,6 +9,8 @@ export interface ImportAccount {
   humanName: string;
   id: ImportAccountType;
   icon: string;
+  dateColumn: RealTransactionField;
+  amountColumns: RealTransactionField[];
   defaultColumns: RealTransactionField[];
 }
 
@@ -17,29 +19,36 @@ export const ImportAccounts: ImportAccount[] = [
     humanName: "ING DiBa",
     id: "ing",
     icon: ing,
-    defaultColumns: ["made_on", "description", "payee", "category", "amount"],
+    dateColumn: "made_on",
+    amountColumns: ["amount"],
+    defaultColumns: ["description", "payee", "category"],
   },
   {
     humanName: "N26",
     id: "n26",
     icon: n26,
-    defaultColumns: ["visibleTS", "referenceText", "partnerName", "merchantName", "mcc", "amount"],
+    dateColumn: "visibleTS",
+    amountColumns: ["amount"],
+    defaultColumns: ["referenceText", "partnerName", "merchantName", "mcc"],
   },
   {
     humanName: "Interactive Brokers",
     id: "ib",
     icon: ib,
-    defaultColumns: [
-      "dateTime",
-      "description",
-      "currency",
-      "amount",
-      "symbol",
-      "quantity",
-      "tradePrice",
-      "tradeMoney",
-      "ibCommission",
-      "type",
-    ],
+    dateColumn: "dateTime",
+    amountColumns: ["amount", "tradeMoney"],
+    defaultColumns: ["description", "symbol", "quantity", "tradePrice", "ibCommission", "type"],
   },
 ];
+
+export const getRealAmount = (transaction: RealTransaction, amountColumns: RealTransactionField[]) => {
+  for (const column of amountColumns) {
+    if (column in transaction) {
+      const amount = transaction[column];
+      if (amount) {
+        return amount;
+      }
+    }
+  }
+  return undefined;
+};
