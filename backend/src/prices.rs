@@ -32,7 +32,7 @@ impl PartialEq for Price {
 }
 
 const DATE_FMT: &str = "%Y/%m/%d";
-const NATIVE_COMMODITY: &str = "EUR";
+const BASE_CURRENCY: &str = "EUR";
 
 impl Display for Price {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -99,11 +99,11 @@ impl Prices {
     {
         let mut prices = Prices::read_prices();
         for commodity in commodities.into_iter().map(AsRef::as_ref) {
-            if commodity == NATIVE_COMMODITY {
+            if commodity == BASE_CURRENCY {
                 continue;
             }
 
-            let mut fetched_prices = self.fetch_prices(commodity, NATIVE_COMMODITY).await;
+            let mut fetched_prices = self.fetch_prices(commodity, BASE_CURRENCY).await;
             prices.append(&mut fetched_prices);
         }
         prices.sort_by(|a, b| {

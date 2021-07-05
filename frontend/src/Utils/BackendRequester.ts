@@ -1,5 +1,5 @@
 import { getApiKey } from "../Components/Login/useApiKey";
-import { Balance } from "../Models/Balance";
+import { Balances } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
 import { TransactionResponse } from "../Models/ImportRow";
 import { IncomeStatementResponse } from "../Models/IncomeStatementResponse";
@@ -39,7 +39,7 @@ export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
 
-export const getBalance = (account: ImportAccount, bypassCache: boolean): Promise<Balance> =>
+export const getBalance = (account: ImportAccount, bypassCache: boolean): Promise<Balances> =>
   get(`balance/${account.id}`, { bypass_cache: bypassCache.toString() });
 
 export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatementResponse> => {

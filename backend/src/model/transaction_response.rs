@@ -1,4 +1,3 @@
-use rust_decimal::Decimal;
 use serde::Serialize;
 
 use super::{hledger_transaction::HledgerTransaction, rule::Rule};
@@ -19,7 +18,5 @@ pub struct ExistingTransactionResponse {
     pub real_transaction: serde_json::Value,
     // For now a hledger transaction. None if unmatched.
     pub hledger_transaction: HledgerTransaction,
-    pub real_cumulative: Decimal,
-    pub hledger_cumulative: Decimal,
     pub errors: Vec<String>,
 }

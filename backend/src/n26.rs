@@ -17,7 +17,7 @@ use crate::{
     db::Database,
     import_account::ImportAccount,
     model::{
-        n26_accounts::N26Accounts, n26_transaction::N26Transaction,
+        balance::RealBalance, n26_accounts::N26Accounts, n26_transaction::N26Transaction,
         real_transaction::RealTransaction, token_data::TokenData,
     },
 };
@@ -235,12 +235,16 @@ impl ImportAccount for N26 {
         response
     }
 
-    async fn get_balance(&self) -> f64 {
+    async fn get_balances(&self) -> Vec<RealBalance> {
         let start = Instant::now();
         let token = self.get_token().await;
         let response = get_accounts_request(token).await;
         info!("Fetch balance from N26 took {:?}", start.elapsed());
-        response.available_balance
+        vec![RealBalance {
+            commodity: response.currency,
+            amount: response.available_balance,
+            base_amount: None,
+        }]
     }
 
     fn get_hledger_account(&self) -> &str {

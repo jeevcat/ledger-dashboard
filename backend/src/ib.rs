@@ -5,16 +5,21 @@ use actix_web::web::Buf;
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use log::info;
-use rust_decimal::{prelude::ToPrimitive, Decimal};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_xml_rs::from_reader;
 
-use crate::{config, import_account::ImportAccount, model::real_transaction::RealTransaction};
+use crate::{
+    config,
+    import_account::ImportAccount,
+    model::{balance::RealBalance, real_transaction::RealTransaction},
+};
 
 const DATETIME_FMT: &str = "%Y%m%d;%H%M%S";
 const DATE_FMT: &str = "%Y%m%d";
 const MAX_RETRIES: u32 = 10;
 const FIRST_RETRY_DELAY: u64 = 10;
+const BASE_CURRENCY: &str = "EUR";
 
 pub struct Ib;
 
@@ -55,7 +60,7 @@ struct FlexStatement {
     trades: Option<Trades>,
     cash_transactions: Option<CashTransactions>,
     open_positions: Option<OpenPositions>,
-    cash_report: Option<CashReports>,
+    fx_positions: Option<FxPositions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,9 +82,9 @@ struct OpenPositions {
 }
 
 #[derive(Debug, Deserialize)]
-struct CashReports {
-    #[serde(rename = "CashReportCurrency", default)]
-    items: Vec<CashReport>,
+struct FxPositions {
+    #[serde(rename = "FxPosition", default)]
+    items: Vec<FxPosition>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -114,16 +119,22 @@ struct OpenPosition {
     currency: String,
     symbol: String,
     description: String,
-    position: i32,
+    position: Decimal,
     mark_price: Decimal,
     position_value: Decimal,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CashReport {
-    currency: String,
-    ending_cash: Decimal,
+struct FxPosition {
+    /// The default account currency
+    functional_currency: String,
+    /// The currency of this forex position
+    fx_currency: String,
+    /// The amount of forex currency
+    quantity: Decimal,
+    /// The value of the forex currency in the default account currency
+    value: Decimal,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -160,26 +171,38 @@ impl RealTransaction for IbTransaction {
     }
 }
 
-pub async fn get_balance() -> f64 {
-    let token = config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-    let query_id =
-        config::ib_flex_balance_query_id().expect("Need to set IB_FLEX_BALANCE_QUERY_ID");
+pub async fn get_balances() -> Vec<RealBalance> {
+    let token = config::ib_flex_token();
+    let query_id = config::ib_flex_balance_query_id();
     let balance = fetch_flex_statement(token, query_id).await;
-    let position_sum = balance
-        .open_positions
-        .unwrap()
-        .items
-        .into_iter()
-        .fold(Decimal::ZERO, |acc, p| acc + p.position_value);
-    let cash_sum = balance
-        .cash_report
-        .unwrap()
-        .items
-        .into_iter()
-        .find(|c| c.currency == "BASE_SUMMARY")
-        .unwrap()
-        .ending_cash;
-    (position_sum + cash_sum).to_f64().unwrap()
+
+    let positions = balance.open_positions.into_iter().flat_map(|x| {
+        x.items.into_iter().map(|op| RealBalance {
+            commodity: op.symbol,
+            amount: op.position,
+            base_amount: Some(op.position_value),
+        })
+    });
+
+    let forex = balance.fx_positions.into_iter().flat_map(|x| {
+        x.items.into_iter().flat_map(|fx| {
+            if fx.functional_currency == BASE_CURRENCY {
+                Some(RealBalance {
+                    base_amount: if fx.functional_currency.as_str() == fx.fx_currency.as_str() {
+                        None
+                    } else {
+                        Some(fx.value)
+                    },
+                    commodity: fx.fx_currency,
+                    amount: fx.quantity,
+                })
+            } else {
+                None
+            }
+        })
+    });
+
+    positions.chain(forex).collect()
 }
 
 async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
@@ -212,9 +235,8 @@ async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
 }
 
 async fn get_transactions() -> Vec<IbTransaction> {
-    let token = config::ib_flex_token().expect("Need to set IB_FLEX_TOKEN");
-    let query_id =
-        config::ib_flex_transactions_query_id().expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID");
+    let token = config::ib_flex_token();
+    let query_id = config::ib_flex_transactions_query_id();
     let statement = fetch_flex_statement(token, query_id).await;
     let trades = statement
         .trades
@@ -270,12 +292,12 @@ impl ImportAccount for Ib {
         get_transactions().await
     }
 
-    async fn get_balance(&self) -> f64 {
-        get_balance().await
+    async fn get_balances(&self) -> Vec<RealBalance> {
+        get_balances().await
     }
 
     fn get_hledger_account(&self) -> &str {
-        "Assets:Cash:IB"
+        "Assets:Investments:IB"
     }
 
     fn get_id(&self) -> &str {
@@ -290,7 +312,7 @@ mod tests {
 
     use super::{get_transactions, IbTransaction, Trade};
     use crate::{
-        ib::{get_balance, FlexStatementRequestResponse},
+        ib::{get_balances, FlexStatementRequestResponse},
         model::{
             hledger_transaction::HledgerTransaction,
             rule::{RulePosting, RulePostingPrice},
@@ -346,7 +368,7 @@ mod tests {
     #[ignore = "Contacts external service"]
     async fn check_get_balance() {
         dotenv::dotenv().ok();
-        let bal = get_balance().await;
+        let bal = get_balances().await;
         println!("{:#?}", bal);
     }
 

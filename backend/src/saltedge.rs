@@ -7,7 +7,10 @@ use serde::{de::DeserializeOwned, Deserialize};
 use crate::{
     config,
     import_account::ImportAccount,
-    model::{saltedge_account::SaltEdgeAccount, saltedge_transaction::SaltEdgeTransaction},
+    model::{
+        balance::RealBalance, saltedge_account::SaltEdgeAccount,
+        saltedge_transaction::SaltEdgeTransaction,
+    },
 };
 
 const ING_ACCOUNT: &str = "Assets:Cash:ING";
@@ -39,6 +42,8 @@ where
         .await
         .unwrap();
 
+    println!("{:#?}", response.headers());
+
     response.json::<SaltEdgeResponse<T>>().await.unwrap().data
 }
 
@@ -69,13 +74,14 @@ impl ImportAccount for SaltEdge {
         transactions
     }
 
-    async fn get_balance(&self) -> f64 {
+    async fn get_balances(&self) -> Vec<RealBalance> {
         let accounts = fetch_accounts().await;
-        accounts
-            .iter()
-            .find(|a| a.id == account_id())
-            .unwrap()
-            .balance
+        let response = accounts.iter().find(|a| a.id == account_id()).unwrap();
+        vec![RealBalance {
+            commodity: response.currency_code.clone(),
+            amount: response.balance,
+            base_amount: None,
+        }]
     }
 
     fn get_hledger_account(&self) -> &str {

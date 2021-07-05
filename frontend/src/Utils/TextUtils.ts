@@ -18,12 +18,16 @@ export function asEuro(amount: number, cents: boolean = true, precision: number 
 }
 
 export function asCurrency(amount: number, currency: string, cents: boolean = true, precision: number = 2): string {
-  const formatter = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    maximumFractionDigits: cents ? precision : 0,
-  });
-  return formatter.format(amount);
+  try {
+    const formatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency,
+      maximumFractionDigits: cents ? precision : 0,
+    });
+    return formatter.format(amount);
+  } catch (e) {
+    return amount.toString();
+  }
 }
 
 export const asDate = (dateString: string) => {

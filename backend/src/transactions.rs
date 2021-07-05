@@ -32,9 +32,10 @@ where
     // TODO fix this account array stuff
     let import_hledger_account = import_account.get_hledger_account();
     let import_hledger_accounts = &[import_hledger_account];
-    let hledger_transactions = hledger
+    let mut hledger_transactions = hledger
         .fetch_account_transactions(import_hledger_accounts)
         .await;
+    hledger_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
 
     info!("Fetched hledger transactions ({:?})", start.elapsed());
     let start = Instant::now();
@@ -54,22 +55,11 @@ where
     );
     let start = Instant::now();
 
-    let balance = hledger
-        .get_account_balance(import_hledger_account)
-        .await
-        .unwrap_or_default();
-
-    info!("Got balance ({:?})", start.elapsed());
-    let start = Instant::now();
-
     let real_transactions: HashMap<_, _> = real_transactions
         .into_iter()
         .map(move |t| (t.get_id().to_string(), t))
         .collect();
 
-    // TODO: Remove need for this clone?
-    let mut hledger_transactions = hledger_transactions.clone();
-    hledger_transactions.sort_by_key(|t| (t.get_date(Some(import_hledger_account))));
     let hledger_transactions = hledger_transactions
         .iter()
         .rev()
@@ -78,34 +68,16 @@ where
             if ids.is_empty() {
                 return vec![(h, None)];
             } else {
-                ids.into_iter().map(|id| (h, Some(id))).collect::<Vec<_>>()
+                ids.into_iter()
+                    .map(|id| (h, real_transactions.get(id)))
+                    .collect::<Vec<_>>()
             }
         })
-        .scan((balance, balance), |(h_sum, r_sum), (h, id)| {
-            // This unwrap is safe. We can be sure that there will always be an amount.
-            let h_amount = h.get_amount(id, import_hledger_account).unwrap();
-            *h_sum -= h_amount;
-
-            let mut real = None;
-            if let Some(id) = id {
-                real = real_transactions.get(id);
-                if let Some(real) = real {
-                    if let Some(amount) =
-                        real.get_field::<Decimal>(real.get_default_amount_field_name())
-                    {
-                        *r_sum -= amount;
-                    }
-                }
-            }
-            Some(((h, real), (*h_sum, *r_sum)))
-        })
-        .map(|((h, r), (hledger_cumulative, real_cumulative))| {
+        .map(|(h, r)| {
             let real_json = r.map_or(serde_json::Value::Null, |real| real.to_json_value());
             ExistingTransactionResponse {
                 real_transaction: real_json,
                 hledger_transaction: h.to_owned(),
-                real_cumulative,
-                hledger_cumulative,
                 errors: get_errors(import_account, &distinct_hledger_ids, &r, &h),
             }
         })

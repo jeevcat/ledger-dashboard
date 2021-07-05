@@ -13,6 +13,7 @@ use std::{
 };
 
 use chrono::{Datelike, NaiveDate};
+use csv::ReaderBuilder;
 use futures::future::{BoxFuture, FutureExt};
 use log::{error, info, warn};
 use rust_decimal::{prelude::ToPrimitive, Decimal};
@@ -30,6 +31,7 @@ const CONTENT_TYPE_JSON: &str = "application/json";
 const READ_PORT: i32 = 5001;
 const BASE_URL: &str = "http://127.0.0.1";
 const DATE_FMT: &str = "%Y-%m-%d";
+const BASE_CURRENCY: &str = "EUR";
 
 pub struct HledgerProcess {
     journal_file: PathBuf,
@@ -316,7 +318,7 @@ impl Hledger {
         true
     }
 
-    pub async fn get_account_balance(&self, account: &str) -> Option<Decimal> {
+    pub async fn get_account_balance(&self, account: &str) -> HashMap<String, Decimal> {
         let command = "bal";
         let account_arg = format!("^{}$", account); // Ensure we only get exact account matches
         let args = &[account_arg.as_str()];
@@ -361,7 +363,7 @@ impl Hledger {
     async fn hledger_csv_command(&self, command: &str, args: &[&str]) -> impl std::io::Read {
         let stdout = Command::new("hledger")
             .arg(command)
-            .arg("-V")
+            // .arg("-V")
             .arg("--output-format")
             .arg("csv")
             .arg("-f")
@@ -376,19 +378,25 @@ impl Hledger {
     }
 }
 
-fn get_total_from_csv(reader: impl std::io::Read) -> Option<Decimal> {
-    let mut reader = csv::Reader::from_reader(reader);
-    for record in reader.records().flatten() {
-        if let Some(account) = record.get(0) {
-            if account != "total" {
-                continue;
+fn get_total_from_csv(reader: impl std::io::Read) -> HashMap<String, Decimal> {
+    let mut reader = ReaderBuilder::new().escape(Some(b'\\')).from_reader(reader);
+    for record in reader.records() {
+        match record {
+            Ok(record) => {
+                if let Some(account) = record.get(0) {
+                    if account != "total" {
+                        continue;
+                    }
+                    if let Some(record) = record.get(1) {
+                        println!("{}", record);
+                        return parse_multi_commodity_amount(record);
+                    }
+                }
             }
-            if let Some(total) = record.get(1) {
-                return currency_amount_to_decimal(total);
-            }
+            Err(e) => error!("{}", e),
         }
     }
-    None
+    HashMap::new()
 }
 
 #[derive(Debug)]
@@ -436,8 +444,8 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
             .iter()
             .skip(1)
             .map(|amount| {
-                assert!(amount == "0" || amount.contains("EUR"));
-                currency_amount_to_decimal(amount).unwrap()
+                debug_assert!(amount == "0" || amount.contains(BASE_CURRENCY));
+                parse_commodity_amount(amount).unwrap().1
             })
             .collect()
     }
@@ -514,12 +522,27 @@ fn last_day_of_next_month(date: NaiveDate) -> NaiveDate {
         .pred()
 }
 
-fn currency_amount_to_decimal(amount: &str) -> Option<Decimal> {
-    if let Some(amount) = amount.split_ascii_whitespace().next() {
-        let amount = amount.replace(",", "");
-        return Decimal::from_str(&amount).ok();
-    }
-    None
+fn parse_multi_commodity_amount(amount: &str) -> HashMap<String, Decimal> {
+    amount
+        .split(", ")
+        .into_iter()
+        .flat_map(|a| {
+            println!("{}", a);
+            parse_commodity_amount(a)
+                .map(|(commodity, amount)| commodity.map(|c| (c, amount)))
+                .flatten()
+        })
+        .into_iter()
+        .collect()
+}
+
+fn parse_commodity_amount(amount: &str) -> Option<(Option<String>, Decimal)> {
+    let mut iter = amount.split_ascii_whitespace();
+    let quantity = iter.next()?;
+    let quantity = quantity.replace(",", "");
+    let quantity = Decimal::from_str(&quantity).ok()?;
+    let commodity = iter.next().map(|c| c.trim_matches('"').to_string());
+    Some((commodity, quantity))
 }
 
 fn get_top_transactions(
@@ -556,32 +579,52 @@ mod tests {
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::{
-        currency_amount_to_decimal, get_income_statement_from_csv, get_total_from_csv,
-        last_day_of_next_month,
+        get_income_statement_from_csv, get_total_from_csv, last_day_of_next_month,
+        parse_commodity_amount,
     };
+    use crate::hledger::parse_multi_commodity_amount;
 
     #[test]
     fn currency_convert_simple() {
-        assert_eq!(
-            currency_amount_to_decimal("100 EUR").unwrap(),
-            Decimal::from_f32(100.).unwrap()
-        )
+        let (commodity, quantity) = parse_commodity_amount("100 EUR").unwrap();
+        assert_eq!(quantity, Decimal::from_i32(100).unwrap());
+        assert_eq!(commodity, Some("EUR".to_string()));
     }
 
     #[test]
     fn currency_convert_cents() {
-        assert_eq!(
-            currency_amount_to_decimal("123.05 EUR").unwrap(),
-            Decimal::from_f32(123.05).unwrap()
-        )
+        let (commodity, quantity) = parse_commodity_amount("123.05 EUR").unwrap();
+        assert_eq!(quantity, Decimal::from_f32(123.05).unwrap());
+        assert_eq!(commodity, Some("EUR".to_string()));
     }
 
     #[test]
     fn currency_convert_comma() {
-        assert_eq!(
-            currency_amount_to_decimal("-5,230.99 EUR").unwrap(),
-            Decimal::from_f32(-5230.99).unwrap()
-        )
+        let (commodity, quantity) = parse_commodity_amount("-5,230.99 EUR").unwrap();
+        assert_eq!(quantity, Decimal::from_f32(-5230.99).unwrap());
+        assert_eq!(commodity, Some("EUR".to_string()));
+    }
+
+    #[test]
+    fn commodity_convert_quotes() {
+        let (commodity, quantity) = parse_commodity_amount(r#"526 "IS3N""#).unwrap();
+        assert_eq!(quantity, Decimal::from_i32(526).unwrap());
+        assert_eq!(commodity, Some("IS3N".to_string()));
+    }
+
+    #[test]
+    fn commodity_convert_no_commodity() {
+        let (commodity, quantity) = parse_commodity_amount("0").unwrap();
+        assert_eq!(quantity, Decimal::from_i32(0).unwrap());
+        assert_eq!(commodity, None);
+    }
+
+    #[test]
+    fn multi_commodity_convert() {
+        let parsed = parse_multi_commodity_amount("4,225.68 EUR, -213.88 USD");
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed["EUR"], Decimal::from_f32(4225.68).unwrap());
+        assert_eq!(parsed["USD"], Decimal::from_f32(-213.88).unwrap());
     }
 
     #[test]
@@ -591,10 +634,9 @@ mod tests {
 "Assets:Cash:N26","-3,490.81 EUR"
 "total","-3,490.81 EUR"
 "#;
-        assert_eq!(
-            get_total_from_csv(data.as_bytes()),
-            Decimal::from_f32(-3490.81)
-        )
+        let (commodity, quantity) = get_total_from_csv(data.as_bytes()).drain().next().unwrap();
+        assert_eq!(quantity, Decimal::from_f32(-3490.81).unwrap());
+        assert_eq!(commodity, "EUR");
     }
 
     #[test]

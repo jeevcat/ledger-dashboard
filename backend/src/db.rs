@@ -15,14 +15,16 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     config,
-    model::{real_transaction::RealTransaction, rule::Rule, token_data::TokenData},
+    model::{
+        balance::RealBalance, real_transaction::RealTransaction, rule::Rule, token_data::TokenData,
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Balance {
     #[serde(rename = "_id")]
     account_id: String,
-    balance: f64,
+    balance: Vec<RealBalance>,
 }
 
 #[derive(Debug)]
@@ -196,7 +198,7 @@ impl Database {
 
     // BALANCE CACHE
 
-    pub async fn get_balance(&self, account_id: &str) -> Result<f64> {
+    pub async fn get_balance(&self, account_id: &str) -> Result<Vec<RealBalance>> {
         let doc = self
             .balances
             .find_one(doc!["_id": account_id], None)
@@ -206,7 +208,7 @@ impl Database {
         Ok(doc)
     }
 
-    pub async fn cache_balance(&self, account_id: &str, balance: f64) -> Result<()> {
+    pub async fn cache_balance(&self, account_id: &str, balance: Vec<RealBalance>) -> Result<()> {
         let options = UpdateOptions::builder().upsert(true).build();
         let update = UpdateModifications::Document(bson::to_document(&Balance {
             account_id: account_id.to_string(),

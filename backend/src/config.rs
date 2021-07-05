@@ -32,16 +32,16 @@ pub fn alpha_vantage_key() -> Option<String> {
     env::var("ALPHA_VANTAGE_KEY").ok()
 }
 
-pub fn ib_flex_token() -> Option<String> {
-    env::var("IB_FLEX_TOKEN").ok()
+pub fn ib_flex_token() -> String {
+    env::var("IB_FLEX_TOKEN").expect("Need to set IB_FLEX_TOKEN")
 }
 
-pub fn ib_flex_balance_query_id() -> Option<String> {
-    env::var("IB_FLEX_BALANCE_QUERY_ID").ok()
+pub fn ib_flex_balance_query_id() -> String {
+    env::var("IB_FLEX_BALANCE_QUERY_ID").expect("Need to set IB_FLEX_BALANCE_QUERY_ID")
 }
 
-pub fn ib_flex_transactions_query_id() -> Option<String> {
-    env::var("IB_FLEX_TRANSACTIONS_QUERY_ID").ok()
+pub fn ib_flex_transactions_query_id() -> String {
+    env::var("IB_FLEX_TRANSACTIONS_QUERY_ID").expect("Need to set IB_FLEX_TRANSACTIONS_QUERY_ID")
 }
 
 pub fn mongodb_url() -> String {

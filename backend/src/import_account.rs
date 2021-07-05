@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 
-use crate::{db::Database, model::real_transaction::RealTransaction};
+use crate::{
+    db::Database,
+    model::{balance::RealBalance, real_transaction::RealTransaction},
+};
 
 #[async_trait]
 pub trait ImportAccount {
@@ -19,17 +22,17 @@ pub trait ImportAccount {
             db.get_transactions(self.get_id()).await.unwrap()
         }
     }
-    async fn get_balance_cached(&self, db: &Database, bypass_cache: bool) -> f64 {
+    async fn get_balance_cached(&self, db: &Database, bypass_cache: bool) -> Vec<RealBalance> {
         if bypass_cache {
-            let b = self.get_balance().await;
-            db.cache_balance(self.get_id(), b).await.unwrap();
+            let b = self.get_balances().await;
+            db.cache_balance(self.get_id(), b.clone()).await.unwrap();
             b
         } else {
             db.get_balance(self.get_id()).await.unwrap()
         }
     }
     async fn get_transactions(&self) -> Vec<Self::RealTransactionType>;
-    async fn get_balance(&self) -> f64;
+    async fn get_balances(&self) -> Vec<RealBalance>;
 
     fn get_id(&self) -> &str;
 
