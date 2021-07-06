@@ -10,7 +10,7 @@ const NUMBER_FIELDS: (keyof Rule)[] = ["priority"];
 interface Props {
   initialRule: Rule;
   error?: string;
-  onSave: (rule: Rule) => void;
+  onSave: (rule: Rule) => Promise<boolean>;
 }
 
 const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
@@ -18,6 +18,7 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
     importAccount: { defaultColumns: ruleFields },
   } = useContext(AccountsContext);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [rule, setRule] = useState(initialRule);
 
   const updatePosting = (field: keyof RulePosting, postingIndex: number, value: any) =>
@@ -252,9 +253,16 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
           icon
           labelPosition="right"
           disabled={JSON.stringify(rule) === JSON.stringify(initialRule)}
+          loading={isSaving}
           onClick={() => {
-            setIsOpen(false);
-            onSave(rule);
+            setIsSaving(true);
+            onSave(rule)
+              .then((success: boolean) => {
+                if (success) {
+                  setIsOpen(false);
+                }
+              })
+              .finally(() => setIsSaving(false));
           }}
         >
           <Icon name="checkmark" />

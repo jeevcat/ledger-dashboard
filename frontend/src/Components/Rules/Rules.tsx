@@ -22,7 +22,7 @@ const Rules: React.FC<Props> = () => {
         setErrors((prevErrors) => ({ ...prevErrors, [rule.id]: error }));
         return true;
       } else {
-        updateRules();
+        fetchRules();
         return false;
       }
     });
@@ -30,7 +30,7 @@ const Rules: React.FC<Props> = () => {
 
   const handleRuleDelete = async (rule: Rule) => {
     deleteRule(rule).then(() => {
-      updateRules();
+      fetchRules();
     });
   };
 
@@ -50,7 +50,7 @@ const Rules: React.FC<Props> = () => {
         },
       ],
     };
-    setRule(importAccount, rule).then(updateRules);
+    setRule(importAccount, rule).then(fetchRules);
   };
 
   const fetchRules = useCallback(() => {
@@ -62,10 +62,6 @@ const Rules: React.FC<Props> = () => {
       })
       .catch((e) => console.error(`Couldn't fetch rules ${e}`));
   }, [importAccount]);
-
-  const updateRules = () => {
-    fetchRules();
-  };
 
   useEffect(() => {
     fetchRules();

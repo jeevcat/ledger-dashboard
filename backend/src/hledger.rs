@@ -388,7 +388,6 @@ fn get_total_from_csv(reader: impl std::io::Read) -> HashMap<String, Decimal> {
                         continue;
                     }
                     if let Some(record) = record.get(1) {
-                        println!("{}", record);
                         return parse_multi_commodity_amount(record);
                     }
                 }
@@ -527,7 +526,6 @@ fn parse_multi_commodity_amount(amount: &str) -> HashMap<String, Decimal> {
         .split(", ")
         .into_iter()
         .flat_map(|a| {
-            println!("{}", a);
             parse_commodity_amount(a)
                 .map(|(commodity, amount)| commodity.map(|c| (c, amount)))
                 .flatten()

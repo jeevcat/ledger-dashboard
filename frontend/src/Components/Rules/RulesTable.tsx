@@ -6,7 +6,7 @@ import RuleComponent from "./Rule";
 type RuleErrors = { [rule: number]: string | undefined };
 
 interface Props {
-  onSetRuleRequested: (rule: Rule) => void;
+  onSetRuleRequested: (rule: Rule) => Promise<boolean>;
   onDeleteRuleRequested: (rule: Rule) => void;
   rules: Rule[];
   errors: RuleErrors;

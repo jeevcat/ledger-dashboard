@@ -1,4 +1,4 @@
-import { asDate, asEuro } from "../Utils/TextUtils";
+import { asCurrency, asDate } from "../Utils/TextUtils";
 
 export interface Amount {
   acommodity: string;
@@ -31,7 +31,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
   if (amt.aprice) {
     const value = amt.aprice.contents.aquantity.floatingPoint;
     const precision = amt.aprice.contents.aquantity.decimalPlaces;
-    const cost = asEuro(negative ? -value : value, precision > 0, precision);
+    const cost = asCurrency(negative ? -value : value, amt.aprice.contents.acommodity ,precision > 0, precision);
 
     const sym = amt.acommodity;
     const sym_amount = amt.aquantity.floatingPoint;
@@ -45,7 +45,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
   }
   const value = amt.aquantity.floatingPoint;
   const precision = amt.aquantity.decimalPlaces;
-  const cost = asEuro(negative ? -value : value, precision > 0, precision);
+  const cost = asCurrency(negative ? -value : value, amt.acommodity, precision > 0, precision);
   return {
     formatted: cost,
     value,

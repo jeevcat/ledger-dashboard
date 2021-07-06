@@ -8,7 +8,7 @@ import PostingsTable from "./PostingsTable";
 interface Props {
   rule: Rule;
   error?: string;
-  onSet: (rule: Rule) => void;
+  onSet: (rule: Rule) => Promise<boolean>;
   onDelete(rule: Rule): void;
 }
 
