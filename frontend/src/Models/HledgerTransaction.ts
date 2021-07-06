@@ -31,7 +31,7 @@ export const getPostingAmount = (p: Posting, negative?: boolean): FormattedAmoun
   if (amt.aprice) {
     const value = amt.aprice.contents.aquantity.floatingPoint;
     const precision = amt.aprice.contents.aquantity.decimalPlaces;
-    const cost = asCurrency(negative ? -value : value, amt.aprice.contents.acommodity ,precision > 0, precision);
+    const cost = asCurrency(negative ? -value : value, amt.aprice.contents.acommodity, precision > 0, precision);
 
     const sym = amt.acommodity;
     const sym_amount = amt.aquantity.floatingPoint;
