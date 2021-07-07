@@ -43,7 +43,6 @@ impl RealTransaction for SaltEdgeTransaction {
     }
 
     fn get_date(&self) -> NaiveDate {
-        // TODO: Write custom deserializer
         NaiveDate::parse_from_str(&self.made_on, DATE_FMT).unwrap()
     }
 
