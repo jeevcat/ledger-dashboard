@@ -21,7 +21,7 @@ export const ImportAccounts: ImportAccount[] = [
     icon: ing,
     dateColumn: "made_on",
     amountColumns: ["amount"],
-    defaultColumns: ["description", "payee", "category"],
+    defaultColumns: ["currency", "description", "payee", "category"],
   },
   {
     humanName: "N26",
@@ -29,7 +29,7 @@ export const ImportAccounts: ImportAccount[] = [
     icon: n26,
     dateColumn: "visibleTS",
     amountColumns: ["amount"],
-    defaultColumns: ["referenceText", "partnerName", "merchantName", "mcc"],
+    defaultColumns: ["currency", "referenceText", "partnerName", "merchantName", "mcc"],
   },
   {
     humanName: "Interactive Brokers",
@@ -37,7 +37,7 @@ export const ImportAccounts: ImportAccount[] = [
     icon: ib,
     dateColumn: "dateTime",
     amountColumns: ["amount", "tradeMoney"],
-    defaultColumns: ["description", "symbol", "quantity", "tradePrice", "ibCommission", "type"],
+    defaultColumns: ["currency", "description", "symbol", "quantity", "tradePrice", "ibCommission", "type"],
   },
 ];
 

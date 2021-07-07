@@ -1,5 +1,6 @@
 import React, { useContext, useState } from "react";
 import { Button, Form, Header, Icon, Label, Modal, Segment } from "semantic-ui-react";
+import { RealTransactionField } from "../Models/ImportRow";
 import { Price, Rule, RulePosting } from "../Models/Rule";
 import { AccountsContext } from "../Utils/AccountsContext";
 import { toTitleCase } from "../Utils/TextUtils";
@@ -15,7 +16,7 @@ interface Props {
 
 const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
   const {
-    importAccount: { defaultColumns: ruleFields },
+    importAccount: { defaultColumns: ruleFields, amountColumns },
   } = useContext(AccountsContext);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -117,7 +118,7 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
     />
   );
 
-  const postingFieldDropdown = (field: keyof RulePosting, postingIndex: number) => (
+  const postingFieldDropdown = (field: keyof RulePosting, postingIndex: number, options: RealTransactionField[]) => (
     <Form.Dropdown
       label={toTitleCase(field.toString())}
       value={rule.postings[postingIndex][field] as string | undefined}
@@ -125,7 +126,7 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
       selection
       search
       clearable
-      options={ruleFields.map((field) => ({
+      options={options.map((field) => ({
         value: field,
         text: toTitleCase(field.toString()),
       }))}
@@ -193,8 +194,8 @@ const EditRuleModal: React.FC<Props> = ({ initialRule, error, onSave }) => {
                 {postingInput("comment", index)}
               </Form.Group>
               <Form.Group widths="equal">
-                {postingFieldDropdown("amountFieldName", index)}
-                {postingFieldDropdown("currencyFieldName", index)}
+                {amountColumns.length > 1 && postingFieldDropdown("amountFieldName", index, amountColumns)}
+                {postingFieldDropdown("currencyFieldName", index, ruleFields)}
               </Form.Group>
               <Form.Group widths="equal">
                 {priceFieldDropdown("amountFieldName", index)}

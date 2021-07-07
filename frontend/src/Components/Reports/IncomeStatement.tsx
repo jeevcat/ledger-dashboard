@@ -68,6 +68,13 @@ export const IncomeStatement: React.FC = () => {
     }
   };
 
+  const maxRows = cursorIndex
+    ? Math.max(
+        incomeStatement?.topExpenses?.[cursorIndex].length ?? 0,
+        incomeStatement?.topRevenues?.[cursorIndex].length ?? 0
+      )
+    : 0;
+
   return (
     <Container fluid>
       {incomeStatement ? (
@@ -86,7 +93,7 @@ export const IncomeStatement: React.FC = () => {
                   <Header textAlign="center">Top Expenses</Header>
                 </GridColumn>
               </Grid.Row>
-              {[0, 1, 2].map((i) => {
+              {sequence(maxRows).map((i) => {
                 const e = cursorIndex ? incomeStatement?.topExpenses?.[cursorIndex][i] : undefined;
                 const r = cursorIndex ? incomeStatement?.topRevenues?.[cursorIndex][i] : undefined;
                 return (
@@ -109,3 +116,8 @@ export const IncomeStatement: React.FC = () => {
     </Container>
   );
 };
+
+const sequence = (max: number) =>
+  Array(max)
+    .fill(0)
+    .map((_, i) => i);

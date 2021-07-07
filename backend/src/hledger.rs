@@ -32,6 +32,7 @@ const READ_PORT: i32 = 5001;
 const BASE_URL: &str = "http://127.0.0.1";
 const DATE_FMT: &str = "%Y-%m-%d";
 const BASE_CURRENCY: &str = "EUR";
+const MAX_TOP_TRANSACTIONS: usize = 5;
 
 pub struct HledgerProcess {
     journal_file: PathBuf,
@@ -566,7 +567,7 @@ fn get_top_transactions(
 
     for top in &mut top_transactions {
         top.sort_by_key(|t| Reverse(t.get_amount(None, account).unwrap().abs()));
-        top.truncate(3);
+        top.truncate(MAX_TOP_TRANSACTIONS);
     }
     top_transactions
 }
