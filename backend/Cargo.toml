@@ -31,7 +31,7 @@ csv = "1"
 rust_decimal = { version ="1", features = ["serde-float"] }
 
 regex = "1"
-handlebars = "3"
+handlebars = "4"
 
 mongodb = "1.2"
 bson = "1.2"

@@ -1,4 +1,4 @@
-use handlebars::{Handlebars, RenderError, TemplateError, TemplateRenderError};
+use handlebars::{Handlebars, RenderError, TemplateError};
 use log::error;
 use serde::Serialize;
 
@@ -49,7 +49,7 @@ impl<'a> Templater<'a> {
         &self,
         template_string: &str,
         data: &T,
-    ) -> Result<String, TemplateRenderError>
+    ) -> Result<String, RenderError>
     where
         T: Serialize,
     {
