@@ -16,6 +16,7 @@ RUN apk add --no-cache nodejs npm
 RUN npm install --global @beam-australia/react-env
 
 COPY entrypoint.sh /var/entrypoint.sh
+RUN chmod +x /var/entrypoint.sh
 ENTRYPOINT ["/var/entrypoint.sh"]
 
 EXPOSE 80
