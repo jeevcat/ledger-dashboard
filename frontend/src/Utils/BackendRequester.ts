@@ -11,6 +11,9 @@ import env from "@beam-australia/react-env";
 // https://create-react-app.dev/docs/proxying-api-requests-in-development/
 // @ts-ignore
 const host = env("REACT_APP_BACKEND_URL") ?? "";
+console.log("Using backend host " + host);
+// @ts-ignore
+console.log("Also" + window.__ENV);
 
 export const getExistingTransactions = (account: ImportAccount, bypassCache: boolean): Promise<TransactionResponse[]> =>
   get(`transactions/existing/${account.id}`, { bypass_cache: bypassCache.toString() });
