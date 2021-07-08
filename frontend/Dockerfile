@@ -17,6 +17,7 @@ RUN npm install --global @beam-australia/react-env
 
 COPY entrypoint.sh /var/entrypoint.sh
 RUN chmod +x /var/entrypoint.sh
+WORKDIR /usr/share/nginx/html
 ENTRYPOINT ["/var/entrypoint.sh"]
 
 EXPOSE 80
