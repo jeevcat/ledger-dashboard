@@ -5,11 +5,12 @@ import { TransactionResponse } from "../Models/ImportRow";
 import { IncomeStatementResponse } from "../Models/IncomeStatementResponse";
 import { Rule } from "../Models/Rule";
 import { TransactionRequest } from "../Models/TransactionRequest";
+import env from "@beam-australia/react-env";
 
 // Using blank host relies on React Proxying when developing
 // https://create-react-app.dev/docs/proxying-api-requests-in-development/
-const host =
-  !process.env.NODE_ENV || process.env.NODE_ENV === "development" ? "" : "https://ledger-backend.azurewebsites.net";
+// @ts-ignore
+const host = env("REACT_APP_BACKEND_URL") ?? "";
 
 export const getExistingTransactions = (account: ImportAccount, bypassCache: boolean): Promise<TransactionResponse[]> =>
   get(`transactions/existing/${account.id}`, { bypass_cache: bypassCache.toString() });

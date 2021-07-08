@@ -7,9 +7,16 @@ COPY . ./
 RUN yarn build
 
 # Stage 2 - the production environment
-FROM nginx:1.19-alpine
+FROM nginx:stable-alpine
 COPY --from=build-deps /src/build /usr/share/nginx/html
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d
+
+RUN apk add --no-cache nodejs npm
+RUN npm install --global @beam-australia/react-env
+
+COPY entrypoint.sh /var/entrypoint.sh
+ENTRYPOINT ["/var/entrypoint.sh"]
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
