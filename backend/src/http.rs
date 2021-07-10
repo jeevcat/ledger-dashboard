@@ -24,8 +24,10 @@ pub async fn run_server() -> io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            // enable logger
-            .wrap(middleware::Logger::default())
+            .wrap(Condition::new(
+                config::api_key().is_some(),
+                HttpAuthentication::basic(validator),
+            ))
             .wrap(
                 Cors::default()
                     .supports_credentials()
@@ -33,10 +35,8 @@ pub async fn run_server() -> io::Result<()> {
                     .allow_any_method()
                     .allow_any_header(),
             )
-            .wrap(Condition::new(
-                config::api_key().is_some(),
-                HttpAuthentication::basic(validator),
-            ))
+            // enable logger
+            .wrap(middleware::Logger::default())
             .data(n26.clone())
             .data(saltedge.clone())
             .data(ib.clone())
