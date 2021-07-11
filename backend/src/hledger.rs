@@ -32,6 +32,8 @@ const READ_PORT: i32 = 5001;
 const BASE_URL: &str = "http://127.0.0.1";
 const DATE_FMT: &str = "%Y-%m-%d";
 const BASE_CURRENCY: &str = "EUR";
+const TOTAL_CSV_HEADING: &str = "total";
+const ACCOUNT_CSV_HEADING: &str = "Account";
 const MAX_TOP_TRANSACTIONS: usize = 5;
 
 pub struct HledgerProcess {
@@ -470,7 +472,7 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
             }
             ParseState::Months => {
                 if let Some(title) = record.get(0) {
-                    if title == "Account" {
+                    if title == ACCOUNT_CSV_HEADING {
                         let mut date = last_day_of_month(start_date);
                         for _ in record.iter().skip(1) {
                             dates.push(date);
@@ -482,7 +484,7 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
             }
             ParseState::Revenues => {
                 if let Some(title) = record.get(0) {
-                    if title == "Total:" {
+                    if title == TOTAL_CSV_HEADING {
                         revenues = record_prices(record);
                         assert_eq!(dates.len(), revenues.len());
                         parse_state = ParseState::Expenses;
@@ -491,7 +493,7 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
             }
             ParseState::Expenses => {
                 if let Some(title) = record.get(0) {
-                    if title == "Total:" {
+                    if title == TOTAL_CSV_HEADING {
                         expenses = record_prices(record);
                         assert_eq!(dates.len(), expenses.len());
                         parse_state = ParseState::Done;
@@ -665,10 +667,10 @@ mod tests {
 "Account","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr"
 "Revenues","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""
 "Income","25.91 EUR","305.37 EUR","4,129.35 EUR","3,080.55 EUR","4,204.66 EUR","2,737.13 EUR","3,333.65 EUR","560.78 EUR","4,931.64 EUR","4,677.54 EUR","2,990.86 EUR","5,004.71 EUR","5,240.15 EUR","4,801.33 EUR","7,064.53 EUR","3,710.17 EUR","1.86 EUR","6,295.03 EUR","5,350.02 EUR","8,857.10 EUR","4,931.82 EUR","5,333.69 EUR","4,001.27 EUR","4,002.12 EUR","4,137.05 EUR","4,144.81 EUR","4,001.30 EUR","8,447.70 EUR","4,760.57 EUR","6,691.28 EUR","2,585.82 EUR","6,474.17 EUR","5,397.55 EUR","5,021.21 EUR","32,540.74 EUR","930.76 EUR","5,632.21 EUR","12,040.00 EUR","4,500.00 EUR","5,840.00 EUR","0","5,360.00 EUR","14,575.00 EUR","10,706.95 EUR","4,510.44 EUR","4,675.44 EUR","6,577.50 EUR","5,199.46 EUR","5,199.46 EUR","5,199.46 EUR","3,228.31 EUR","5,728.31 EUR","12,618.21 EUR","5,074.98 EUR","5,272.06 EUR","5,712.34 EUR","26,874.86 EUR","6,344.86 EUR","7,806.13 EUR","0"
-"Total:","25.91 EUR","305.37 EUR","4,129.35 EUR","3,080.55 EUR","4,204.66 EUR","2,737.13 EUR","3,333.65 EUR","560.78 EUR","4,931.64 EUR","4,677.54 EUR","2,990.86 EUR","5,004.71 EUR","5,240.15 EUR","4,801.33 EUR","7,064.53 EUR","3,710.17 EUR","1.86 EUR","6,295.03 EUR","5,350.02 EUR","8,857.10 EUR","4,931.82 EUR","5,333.69 EUR","4,001.27 EUR","4,002.12 EUR","4,137.05 EUR","4,144.81 EUR","4,001.30 EUR","8,447.70 EUR","4,760.57 EUR","6,691.28 EUR","2,585.82 EUR","6,474.17 EUR","5,397.55 EUR","5,021.21 EUR","32,540.74 EUR","930.76 EUR","5,632.21 EUR","12,040.00 EUR","4,500.00 EUR","5,840.00 EUR","0","5,360.00 EUR","14,575.00 EUR","10,706.95 EUR","4,510.44 EUR","4,675.44 EUR","6,577.50 EUR","5,199.46 EUR","5,199.46 EUR","5,199.46 EUR","3,228.31 EUR","5,728.31 EUR","12,618.21 EUR","5,074.98 EUR","5,272.06 EUR","5,712.34 EUR","26,874.86 EUR","6,344.86 EUR","7,806.13 EUR","0"
+"total","25.91 EUR","305.37 EUR","4,129.35 EUR","3,080.55 EUR","4,204.66 EUR","2,737.13 EUR","3,333.65 EUR","560.78 EUR","4,931.64 EUR","4,677.54 EUR","2,990.86 EUR","5,004.71 EUR","5,240.15 EUR","4,801.33 EUR","7,064.53 EUR","3,710.17 EUR","1.86 EUR","6,295.03 EUR","5,350.02 EUR","8,857.10 EUR","4,931.82 EUR","5,333.69 EUR","4,001.27 EUR","4,002.12 EUR","4,137.05 EUR","4,144.81 EUR","4,001.30 EUR","8,447.70 EUR","4,760.57 EUR","6,691.28 EUR","2,585.82 EUR","6,474.17 EUR","5,397.55 EUR","5,021.21 EUR","32,540.74 EUR","930.76 EUR","5,632.21 EUR","12,040.00 EUR","4,500.00 EUR","5,840.00 EUR","0","5,360.00 EUR","14,575.00 EUR","10,706.95 EUR","4,510.44 EUR","4,675.44 EUR","6,577.50 EUR","5,199.46 EUR","5,199.46 EUR","5,199.46 EUR","3,228.31 EUR","5,728.31 EUR","12,618.21 EUR","5,074.98 EUR","5,272.06 EUR","5,712.34 EUR","26,874.86 EUR","6,344.86 EUR","7,806.13 EUR","0"
 "Expenses","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""
 "Expenses","0","498.69 EUR","1,523.51 EUR","2,969.29 EUR","4,413.99 EUR","3,276.31 EUR","1,294.94 EUR","1,638.35 EUR","1,585.99 EUR","2,269.89 EUR","1,894.67 EUR","1,948.98 EUR","1,330.70 EUR","8,742.17 EUR","2,249.22 EUR","2,335.52 EUR","1,676.18 EUR","1,536.85 EUR","2,802.16 EUR","3,770.63 EUR","2,041.65 EUR","2,248.31 EUR","1,972.25 EUR","2,118.01 EUR","4,408.57 EUR","2,549.15 EUR","1,632.98 EUR","1,447.28 EUR","1,532.70 EUR","2,556.69 EUR","5,494.46 EUR","5,133.41 EUR","2,849.54 EUR","3,687.17 EUR","3,792.58 EUR","10,526.35 EUR","2,783.59 EUR","4,730.28 EUR","3,228.42 EUR","2,452.95 EUR","3,041.50 EUR","3,786.23 EUR","15,201.55 EUR","6,263.17 EUR","4,371.43 EUR","3,048.34 EUR","2,833.89 EUR","4,780.26 EUR","4,277.65 EUR","2,644.22 EUR","21,581.48 EUR","4,247.29 EUR","4,024.44 EUR","4,682.87 EUR","15,472.40 EUR","5,579.70 EUR","3,671.48 EUR","2,957.47 EUR","326.27 EUR","2,688.94 EUR"
-"Total:","0","498.69 EUR","1,523.51 EUR","2,969.29 EUR","4,413.99 EUR","3,276.31 EUR","1,294.94 EUR","1,638.35 EUR","1,585.99 EUR","2,269.89 EUR","1,894.67 EUR","1,948.98 EUR","1,330.70 EUR","8,742.17 EUR","2,249.22 EUR","2,335.52 EUR","1,676.18 EUR","1,536.85 EUR","2,802.16 EUR","3,770.63 EUR","2,041.65 EUR","2,248.31 EUR","1,972.25 EUR","2,118.01 EUR","4,408.57 EUR","2,549.15 EUR","1,632.98 EUR","1,447.28 EUR","1,532.70 EUR","2,556.69 EUR","5,494.46 EUR","5,133.41 EUR","2,849.54 EUR","3,687.17 EUR","3,792.58 EUR","10,526.35 EUR","2,783.59 EUR","4,730.28 EUR","3,228.42 EUR","2,452.95 EUR","3,041.50 EUR","3,786.23 EUR","15,201.55 EUR","6,263.17 EUR","4,371.43 EUR","3,048.34 EUR","2,833.89 EUR","4,780.26 EUR","4,277.65 EUR","2,644.22 EUR","21,581.48 EUR","4,247.29 EUR","4,024.44 EUR","4,682.87 EUR","15,472.40 EUR","5,579.70 EUR","3,671.48 EUR","2,957.47 EUR","326.27 EUR","2,688.94 EUR"
+"total","0","498.69 EUR","1,523.51 EUR","2,969.29 EUR","4,413.99 EUR","3,276.31 EUR","1,294.94 EUR","1,638.35 EUR","1,585.99 EUR","2,269.89 EUR","1,894.67 EUR","1,948.98 EUR","1,330.70 EUR","8,742.17 EUR","2,249.22 EUR","2,335.52 EUR","1,676.18 EUR","1,536.85 EUR","2,802.16 EUR","3,770.63 EUR","2,041.65 EUR","2,248.31 EUR","1,972.25 EUR","2,118.01 EUR","4,408.57 EUR","2,549.15 EUR","1,632.98 EUR","1,447.28 EUR","1,532.70 EUR","2,556.69 EUR","5,494.46 EUR","5,133.41 EUR","2,849.54 EUR","3,687.17 EUR","3,792.58 EUR","10,526.35 EUR","2,783.59 EUR","4,730.28 EUR","3,228.42 EUR","2,452.95 EUR","3,041.50 EUR","3,786.23 EUR","15,201.55 EUR","6,263.17 EUR","4,371.43 EUR","3,048.34 EUR","2,833.89 EUR","4,780.26 EUR","4,277.65 EUR","2,644.22 EUR","21,581.48 EUR","4,247.29 EUR","4,024.44 EUR","4,682.87 EUR","15,472.40 EUR","5,579.70 EUR","3,671.48 EUR","2,957.47 EUR","326.27 EUR","2,688.94 EUR"
 "Net:","25.91 EUR","-193.32 EUR","2,605.83 EUR","111.26 EUR","-209.32 EUR","-539.18 EUR","2,038.71 EUR","-1,077.57 EUR","3,345.65 EUR","2,407.65 EUR","1,096.19 EUR","3,055.73 EUR","3,909.46 EUR","-3,940.84 EUR","4,815.31 EUR","1,374.64 EUR","-1,674.31 EUR","4,758.19 EUR","2,547.86 EUR","5,086.47 EUR","2,890.17 EUR","3,085.38 EUR","2,029.02 EUR","1,884.10 EUR","-271.52 EUR","1,595.66 EUR","2,368.32 EUR","7,000.42 EUR","3,227.87 EUR","4,134.59 EUR","-2,908.64 EUR","1,340.76 EUR","2,548.01 EUR","1,334.04 EUR","28,748.16 EUR","-9,595.59 EUR","2,848.62 EUR","7,309.72 EUR","1,271.58 EUR","3,387.05 EUR","-3,041.50 EUR","1,573.77 EUR","-626.55 EUR","4,443.78 EUR","139.01 EUR","1,627.10 EUR","3,743.61 EUR","419.20 EUR","921.81 EUR","2,555.24 EUR","-18,353.17 EUR","1,481.02 EUR","8,593.77 EUR","392.11 EUR","-10,200.34 EUR","132.64 EUR","23,203.38 EUR","3,387.39 EUR","7,479.86 EUR","-2,688.94 EUR"
 "#;
         let is = get_income_statement_from_csv(data.as_bytes());
