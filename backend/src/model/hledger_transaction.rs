@@ -52,9 +52,9 @@ impl Price {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "tag", content = "contents")]
+#[serde(untagged)]
 enum Precision {
-    Precision(i32),
+    Precision(u8),
     NaturalPrecision,
 }
 
@@ -87,7 +87,7 @@ impl Amount {
             astyle: AmountStyle {
                 ascommodityside: String::from("R"),
                 ascommodityspaced: true,
-                asprecision: Precision::Precision(quantity.scale() as i32),
+                asprecision: Precision::Precision(quantity.scale() as u8),
             },
             aprice: price.map(Box::new),
         }
