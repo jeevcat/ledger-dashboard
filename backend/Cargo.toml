@@ -5,7 +5,8 @@ authors = ["Sam Jeeves"]
 edition = "2018"
 
 [profile.release]
-debug = true
+#debug = true
+lto = true
 
 [dependencies]
 actix = "0.10.0"
