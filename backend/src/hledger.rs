@@ -31,8 +31,8 @@ const CONTENT_TYPE_JSON: &str = "application/json";
 const READ_PORT: i32 = 5001;
 const BASE_URL: &str = "http://127.0.0.1";
 const DATE_FMT: &str = "%Y-%m-%d";
-const BASE_CURRENCY: &str = "EUR";
 const TOTAL_CSV_HEADING: &str = "total";
+const NET_CSV_HEADING: &str = "Net:";
 const ACCOUNT_CSV_HEADING: &str = "Account";
 const MAX_TOP_TRANSACTIONS: usize = 5;
 
@@ -350,9 +350,9 @@ impl Hledger {
         }
         let stdout = self.hledger_csv_command(command, &args).await;
 
-        let all = self.fetch_all_transactions().await;
-        let is = get_income_statement_from_csv(stdout);
+        let is = get_report_from_csv(stdout);
 
+        let all = self.fetch_all_transactions().await;
         let top_expenses = get_top_transactions("Expenses", &all, &is.dates);
         let top_revenues = get_top_transactions("Income", &all, &is.dates);
 
@@ -361,6 +361,32 @@ impl Hledger {
             top_revenues,
             top_expenses,
         }
+    }
+
+    pub async fn get_net_worth(
+        &self,
+        from: Option<NaiveDate>,
+        to: Option<NaiveDate>,
+    ) -> AlignedData {
+        let command = "bs";
+        let mut args = vec!["-V", "--monthly", "--depth", "1"];
+        let s;
+        if let Some(from) = from {
+            args.push("-b");
+            s = from.format(DATE_FMT).to_string();
+            args.push(&s);
+        }
+        let s;
+        if let Some(to) = to {
+            args.push("-e");
+            s = to.format(DATE_FMT).to_string();
+            args.push(&s);
+        }
+        let stdout = self.hledger_csv_command(command, &args).await;
+
+        let is = get_report_from_csv(stdout);
+
+        is.into()
     }
 
     async fn hledger_csv_command(&self, command: &str, args: &[&str]) -> impl std::io::Read {
@@ -402,53 +428,53 @@ fn get_total_from_csv(reader: impl std::io::Read) -> HashMap<String, Decimal> {
 }
 
 #[derive(Debug)]
-struct IncomeStatement {
+struct Report {
     dates: Vec<NaiveDate>,
-    revenues: Vec<Decimal>,
-    expenses: Vec<Decimal>,
+    section_a: Vec<Decimal>,
+    section_b: Vec<Decimal>,
+    net: Vec<Decimal>,
 }
 
-impl From<IncomeStatement> for AlignedData {
-    fn from(is: IncomeStatement) -> Self {
+impl From<Report> for AlignedData {
+    fn from(rep: Report) -> Self {
         let decimal_to_number =
             |v: &Decimal| serde_json::Number::from_f64(v.to_f64().unwrap()).unwrap();
         AlignedData {
-            x_values: is
+            x_values: rep
                 .dates
                 .iter()
                 .map(|d| d.and_hms(0, 0, 0).timestamp().into())
                 .collect(),
             y_values: vec![
-                is.revenues.iter().map(decimal_to_number).collect(),
-                is.expenses.iter().map(decimal_to_number).collect(),
+                rep.section_a.iter().map(decimal_to_number).collect(),
+                rep.section_b.iter().map(decimal_to_number).collect(),
+                rep.net.iter().map(decimal_to_number).collect(),
             ],
         }
     }
 }
 
-fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement {
+fn get_report_from_csv(reader: impl std::io::Read) -> Report {
     enum ParseState {
         Description,
         Months,
-        Revenues,
-        Expenses,
-        Done,
+        SectionA,
+        SectionB,
+        Net,
     }
 
     let mut parse_state = ParseState::Description;
     let mut start_date: NaiveDate = NaiveDate::from_ymd(1, 1, 1);
     let mut dates: Vec<NaiveDate> = vec![];
-    let mut revenues: Vec<Decimal> = vec![];
-    let mut expenses: Vec<Decimal> = vec![];
+    let mut section_a: Vec<Decimal> = vec![];
+    let mut section_b: Vec<Decimal> = vec![];
+    let mut net: Vec<Decimal> = vec![];
 
     fn record_prices(record: csv::StringRecord) -> Vec<Decimal> {
         record
             .iter()
             .skip(1)
-            .map(|amount| {
-                debug_assert!(amount == "0" || amount.contains(BASE_CURRENCY));
-                parse_commodity_amount(amount).unwrap().1
-            })
+            .map(|amount| parse_commodity_amount(amount).unwrap().1)
             .collect()
     }
 
@@ -460,7 +486,7 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
         match parse_state {
             ParseState::Description => {
                 if let Some(description) = record.get(0) {
-                    if description.starts_with("Income Statement") {
+                    if description.contains("..") {
                         let date_range = description.split(' ').nth(2).unwrap();
                         let mut split = date_range.split("..");
 
@@ -478,37 +504,44 @@ fn get_income_statement_from_csv(reader: impl std::io::Read) -> IncomeStatement 
                             dates.push(date);
                             date = last_day_of_next_month(date);
                         }
-                        parse_state = ParseState::Revenues;
+                        parse_state = ParseState::SectionA;
                     }
                 }
             }
-            ParseState::Revenues => {
+            ParseState::SectionA => {
                 if let Some(title) = record.get(0) {
                     if title == TOTAL_CSV_HEADING {
-                        revenues = record_prices(record);
-                        assert_eq!(dates.len(), revenues.len());
-                        parse_state = ParseState::Expenses;
+                        section_a = record_prices(record);
+                        assert_eq!(dates.len(), section_a.len());
+                        parse_state = ParseState::SectionB;
                     }
                 }
             }
-            ParseState::Expenses => {
+            ParseState::SectionB => {
                 if let Some(title) = record.get(0) {
                     if title == TOTAL_CSV_HEADING {
-                        expenses = record_prices(record);
-                        assert_eq!(dates.len(), expenses.len());
-                        parse_state = ParseState::Done;
+                        section_b = record_prices(record);
+                        assert_eq!(dates.len(), section_b.len());
+                        parse_state = ParseState::Net;
                     }
                 }
             }
-            ParseState::Done => {
+            ParseState::Net => {
+                if let Some(title) = record.get(0) {
+                    if title == NET_CSV_HEADING {
+                        net = record_prices(record);
+                        assert_eq!(dates.len(), net.len());
+                    }
+                }
                 break;
             }
         }
     }
-    IncomeStatement {
+    Report {
         dates,
-        revenues,
-        expenses,
+        section_a,
+        section_b,
+        net,
     }
 }
 
@@ -580,8 +613,7 @@ mod tests {
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
     use super::{
-        get_income_statement_from_csv, get_total_from_csv, last_day_of_next_month,
-        parse_commodity_amount,
+        get_report_from_csv, get_total_from_csv, last_day_of_next_month, parse_commodity_amount,
     };
     use crate::hledger::parse_multi_commodity_amount;
 
@@ -673,18 +705,52 @@ mod tests {
 "total","0","498.69 EUR","1,523.51 EUR","2,969.29 EUR","4,413.99 EUR","3,276.31 EUR","1,294.94 EUR","1,638.35 EUR","1,585.99 EUR","2,269.89 EUR","1,894.67 EUR","1,948.98 EUR","1,330.70 EUR","8,742.17 EUR","2,249.22 EUR","2,335.52 EUR","1,676.18 EUR","1,536.85 EUR","2,802.16 EUR","3,770.63 EUR","2,041.65 EUR","2,248.31 EUR","1,972.25 EUR","2,118.01 EUR","4,408.57 EUR","2,549.15 EUR","1,632.98 EUR","1,447.28 EUR","1,532.70 EUR","2,556.69 EUR","5,494.46 EUR","5,133.41 EUR","2,849.54 EUR","3,687.17 EUR","3,792.58 EUR","10,526.35 EUR","2,783.59 EUR","4,730.28 EUR","3,228.42 EUR","2,452.95 EUR","3,041.50 EUR","3,786.23 EUR","15,201.55 EUR","6,263.17 EUR","4,371.43 EUR","3,048.34 EUR","2,833.89 EUR","4,780.26 EUR","4,277.65 EUR","2,644.22 EUR","21,581.48 EUR","4,247.29 EUR","4,024.44 EUR","4,682.87 EUR","15,472.40 EUR","5,579.70 EUR","3,671.48 EUR","2,957.47 EUR","326.27 EUR","2,688.94 EUR"
 "Net:","25.91 EUR","-193.32 EUR","2,605.83 EUR","111.26 EUR","-209.32 EUR","-539.18 EUR","2,038.71 EUR","-1,077.57 EUR","3,345.65 EUR","2,407.65 EUR","1,096.19 EUR","3,055.73 EUR","3,909.46 EUR","-3,940.84 EUR","4,815.31 EUR","1,374.64 EUR","-1,674.31 EUR","4,758.19 EUR","2,547.86 EUR","5,086.47 EUR","2,890.17 EUR","3,085.38 EUR","2,029.02 EUR","1,884.10 EUR","-271.52 EUR","1,595.66 EUR","2,368.32 EUR","7,000.42 EUR","3,227.87 EUR","4,134.59 EUR","-2,908.64 EUR","1,340.76 EUR","2,548.01 EUR","1,334.04 EUR","28,748.16 EUR","-9,595.59 EUR","2,848.62 EUR","7,309.72 EUR","1,271.58 EUR","3,387.05 EUR","-3,041.50 EUR","1,573.77 EUR","-626.55 EUR","4,443.78 EUR","139.01 EUR","1,627.10 EUR","3,743.61 EUR","419.20 EUR","921.81 EUR","2,555.24 EUR","-18,353.17 EUR","1,481.02 EUR","8,593.77 EUR","392.11 EUR","-10,200.34 EUR","132.64 EUR","23,203.38 EUR","3,387.39 EUR","7,479.86 EUR","-2,688.94 EUR"
 "#;
-        let is = get_income_statement_from_csv(data.as_bytes());
+        let is = get_report_from_csv(data.as_bytes());
         println!("{:#?}", is);
         assert_eq!(is.dates.first().unwrap(), &NaiveDate::from_ymd(2016, 5, 31));
         assert_eq!(is.dates.last().unwrap(), &NaiveDate::from_ymd(2021, 4, 30));
-        assert_eq!(is.revenues[0], Decimal::from_f64(25.91).unwrap());
-        assert_eq!(is.revenues[1], Decimal::from_f64(305.37).unwrap());
-        assert_eq!(is.expenses[0], Decimal::from_f64(0.).unwrap());
-        assert_eq!(is.expenses[1], Decimal::from_f64(498.69).unwrap());
-        assert_eq!(is.revenues.last().unwrap(), &Decimal::from_f64(0.).unwrap());
+        assert_eq!(is.section_a[0], Decimal::from_f64(25.91).unwrap());
+        assert_eq!(is.section_a[1], Decimal::from_f64(305.37).unwrap());
+        assert_eq!(is.section_b[0], Decimal::from_f64(0.).unwrap());
+        assert_eq!(is.section_b[1], Decimal::from_f64(498.69).unwrap());
         assert_eq!(
-            is.expenses.last().unwrap(),
+            is.section_a.last().unwrap(),
+            &Decimal::from_f64(0.).unwrap()
+        );
+        assert_eq!(
+            is.section_b.last().unwrap(),
             &Decimal::from_f64(2688.94).unwrap()
+        );
+    }
+
+    #[test]
+    fn balance_sheet() {
+        let data = r#"
+"Balance Sheet 2021-01-31..2021-12-31, valued at period ends","","","","","","","","","","","",""
+"Account","2021-01-31","2021-02-28","2021-03-31","2021-04-30","2021-05-31","2021-06-30","2021-07-31","2021-08-31","2021-09-30","2021-10-31","2021-11-30","2021-12-31"
+"Assets","","","","","","","","","","","",""
+"Assets","160,993.93 EUR","172,169.91 EUR","182,712.64 EUR","217,038.34 EUR","212,799.72 EUR","209,529.75 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR"
+"total","160,993.93 EUR","172,169.91 EUR","182,712.64 EUR","217,038.34 EUR","212,799.72 EUR","209,529.75 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR","207,101.70 EUR"
+"Liabilities","","","","","","","","","","","",""
+"Liabilities","34,766.96 EUR","35,241.86 EUR","35,783.02 EUR","64,864.73 EUR","64,864.73 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR"
+"total","34,766.96 EUR","35,241.86 EUR","35,783.02 EUR","64,864.73 EUR","64,864.73 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR","64,334.85 EUR"
+"Net:","126,226.97 EUR","136,928.06 EUR","146,929.62 EUR","152,173.61 EUR","147,934.99 EUR","145,194.90 EUR","142,766.85 EUR","142,766.85 EUR","142,766.85 EUR","142,766.85 EUR","142,766.85 EUR","142,766.85 EUR"
+"#;
+        let is = get_report_from_csv(data.as_bytes());
+        println!("{:#?}", is);
+        assert_eq!(is.dates.first().unwrap(), &NaiveDate::from_ymd(2021, 1, 31));
+        assert_eq!(is.dates.last().unwrap(), &NaiveDate::from_ymd(2021, 12, 31));
+        assert_eq!(is.section_a[0], Decimal::from_f64(160993.93).unwrap());
+        assert_eq!(is.section_a[1], Decimal::from_f64(172169.91).unwrap());
+        assert_eq!(is.section_b[0], Decimal::from_f64(34766.96).unwrap());
+        assert_eq!(is.section_b[1], Decimal::from_f64(35241.86).unwrap());
+        assert_eq!(
+            is.section_a.last().unwrap(),
+            &Decimal::from_f64(207101.70).unwrap()
+        );
+        assert_eq!(
+            is.section_b.last().unwrap(),
+            &Decimal::from_f64(64334.85).unwrap()
         );
     }
 }

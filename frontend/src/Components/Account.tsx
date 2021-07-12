@@ -100,7 +100,7 @@ export const AccountComponent: React.FC<Props> = ({ account, onUpdate }) => {
         </Table.Cell>
         <Table.Cell rowSpan={rows} textAlign="center">
           <Link to={`/import/${account.id}`}>
-            <Button icon="sign-in" />
+            <Button icon="file import" />
           </Link>
         </Table.Cell>
       </Table.Row>

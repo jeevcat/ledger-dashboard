@@ -1,3 +1,4 @@
+import { AlignedData } from "uplot";
 import { getApiKey } from "../Components/Login/useApiKey";
 import { Balances } from "../Models/Balance";
 import { ImportAccount } from "../Models/ImportAccount";
@@ -43,14 +44,13 @@ export const getBalance = (account: ImportAccount, bypassCache: boolean): Promis
   get(`balance/${account.id}`, { bypass_cache: bypassCache.toString() });
 
 export const getIncomeStatement = (from?: Date, to?: Date): Promise<IncomeStatementResponse> => {
-  const query: Record<string, string> = {};
-  if (from) {
-    query.from = from.toISOString().split("T")[0];
-  }
-  if (to) {
-    query.to = to.toISOString().split("T")[0];
-  }
+  const query = timeRange(from, to);
   return get("reports/income_statement", query);
+};
+
+export const getNetWorth = (from?: Date, to?: Date): Promise<AlignedData> => {
+  const query = timeRange(from, to);
+  return get("reports/net_worth", query);
 };
 
 export const getDirtyJournalFiles = (): Promise<string[]> => get("journal/dirty");
@@ -103,4 +103,15 @@ const del = (url: string): Promise<void> => {
       throw new Error(response.statusText);
     }
   });
+};
+
+const timeRange = (from?: Date, to?: Date): Record<string, string> => {
+  const query: Record<string, string> = {};
+  if (from) {
+    query.from = from.toISOString().split("T")[0];
+  }
+  if (to) {
+    query.to = to.toISOString().split("T")[0];
+  }
+  return query;
 };

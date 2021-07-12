@@ -1,6 +1,6 @@
+import "fomantic-ui-css/semantic.min.css";
 import React from "react";
 import { BrowserRouter as Router, NavLink, Route, Switch } from "react-router-dom";
-import "semantic-ui-css/semantic.min.css";
 import { Image, Menu } from "semantic-ui-react";
 import "../App.css";
 import { ImportAccounts } from "../Models/ImportAccount";
@@ -8,8 +8,8 @@ import { AccountsComponent } from "./Accounts";
 import { Import } from "./Import";
 import { Login } from "./Login/Login";
 import useApiKey from "./Login/useApiKey";
-import { IncomeStatement } from "./Reports/IncomeStatement";
-import { NetWorth } from "./Reports/NetWorth";
+import IncomeStatement from "./Reports/IncomeStatement";
+import NetWorth from "./Reports/NetWorth";
 import { Save } from "./Save/Save";
 
 const App: React.FC = () => {

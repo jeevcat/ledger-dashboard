@@ -16,6 +16,10 @@
   margin-right: 3em; */
 }
 
+.u-title, .u-legend {
+  font-family: Lato,'Helvetica Neue',Arial,Helvetica,sans-serif;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace;
   border-radius: 6px;

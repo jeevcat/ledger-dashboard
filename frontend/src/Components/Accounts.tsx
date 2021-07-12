@@ -22,14 +22,14 @@ export const AccountsComponent: React.FC = () => {
   const realTotal = Object.keys(total).reduce((previous, key) => previous + total[key], 0);
   return (
     <Grid textAlign="center" verticalAlign="middle" style={{ height: "100vh", margin: 0 }}>
-      <Grid.Column style={{ maxWidth: 800 }} textAlign="left">
+      <Grid.Column style={{ maxWidth: 1027 }} textAlign="left">
         <Header as="h1">Accounts</Header>
         <Table celled structured>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell>Account</Table.HeaderCell>
               <Table.HeaderCell>Commodity</Table.HeaderCell>
-              <Table.HeaderCell>Value</Table.HeaderCell>
+              <Table.HeaderCell>Value (EUR)</Table.HeaderCell>
               <Table.HeaderCell>Real balance</Table.HeaderCell>
               <Table.HeaderCell>
                 <i>hledger</i> balance
