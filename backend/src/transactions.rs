@@ -78,7 +78,7 @@ where
             ExistingTransactionResponse {
                 real_transaction: real_json,
                 hledger_transaction: h.to_owned(),
-                errors: get_errors(import_account, &distinct_hledger_ids, &r, &h),
+                errors: get_errors(import_account, &distinct_hledger_ids, &r, h),
             }
         })
         .collect();

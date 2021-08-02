@@ -99,8 +99,8 @@ fn commit(repo: &Repository, commit_msg: &str, name: &str, email: &str) -> Resul
 }
 
 fn push(repo: &Repository) -> Result<()> {
-    let mut remote = get_default_remote(&repo)?;
-    do_fetch(&repo, &mut remote)?;
+    let mut remote = get_default_remote(repo)?;
+    do_fetch(repo, &mut remote)?;
     let remote_branch = get_default_branch(&remote)?;
 
     info!("Got default branch {}", remote_branch);
@@ -166,7 +166,7 @@ fn clone_or_pull(url: &str) -> Repository {
         let fetch_opts = get_fetch_options();
         RepoBuilder::new()
             .fetch_options(fetch_opts)
-            .clone(&url, &path)
+            .clone(url, &path)
             .unwrap()
     }
 }
@@ -237,7 +237,7 @@ fn do_merge<'a>(
     } else if analysis.0.is_normal() {
         // do a normal merge
         let head_commit = repo.reference_to_annotated_commit(&repo.head()?)?;
-        normal_merge(&repo, &head_commit, &fetch_commit)?;
+        normal_merge(repo, &head_commit, &fetch_commit)?;
     } else {
         info!("Nothing to do...");
     }

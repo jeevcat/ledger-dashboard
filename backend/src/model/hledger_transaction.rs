@@ -185,7 +185,7 @@ impl HledgerTransaction {
         T: RealTransaction,
     {
         Self::new(
-            &description,
+            description,
             real_transaction.get_date(),
             &real_transaction.get_id(),
         )

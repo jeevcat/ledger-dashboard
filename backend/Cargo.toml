@@ -10,15 +10,15 @@ lto = true
 
 [dependencies]
 actix = "0.10.0"
-actix-web = "3.3"
+actix-web = "3"
 actix-rt = "1"
-actix-service = "1.0"
+actix-service = "1"
 actix-cors = "0.5"
 actix-web-httpauth = "0.5"
 
 dotenv = "0.15"
 log = "*"
-env_logger = "0.8"
+env_logger = "0.9"
 async-trait = "0.1"
 
 reqwest = { version = "0.10", features = ["json"] } # waiting on actix web to use actix 0.11. Seems this is coming in actix web v4
