@@ -61,6 +61,6 @@ pub fn journal_repo_url() -> String {
 pub fn journal_repo_credentials() -> Option<(String, String)> {
     Some((
         env::var("JOURNAL_REPO_USERNAME").ok()?,
-        env::var("JOURNAL_REPO_PASSWORD").ok()?,
+        env::var("JOURNAL_REPO_PAT").ok()?,
     ))
 }
