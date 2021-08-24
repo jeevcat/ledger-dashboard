@@ -4,7 +4,7 @@ ENV PKG_CONFIG_ALLOW_CROSS=1
 
 # Get hledger version 1.22
 WORKDIR /usr/bin/hledger
-RUN wget https://github.com/simonmichael/hledger/releases/download/1.22/hledger-linux-static-x64.zip
+RUN wget https://github.com/simonmichael/hledger/releases/download/1.22.2/hledger-linux-static-x64.zip
 RUN unzip hledger-linux-static-x64.zip
 RUN mv hledger-static-linux-x64 hledger
 RUN mv hledger-web-static-linux-x64 hledger-web
