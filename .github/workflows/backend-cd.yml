@@ -15,6 +15,7 @@ env:
 
 jobs:
   build:
+    name: Build docker image
     runs-on: [self-hosted, linux] # docker login doesn't work on Windows right now https://github.com/docker/login-action/issues/47
     steps:
       - name: Login to Docker Hub
@@ -37,9 +38,11 @@ jobs:
 
   deploy:
       name: Fly deploy
-      runs-on: ubuntu-latest
+      runs-on: self-hosted
+      needs: build
       env:
         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        FLY_PROJECT_PATH: backend
       steps:
         - uses: actions/checkout@v2
         - uses: superfly/flyctl-actions@1.1
