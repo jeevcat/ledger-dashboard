@@ -34,3 +34,16 @@ jobs:
           tags: jeevcat/ledger-dash-frontend:latest
           pull: true
           push: true
+
+  deploy:
+      name: Fly deploy
+      runs-on: self-hosted
+      needs: build
+      env:
+        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        FLY_PROJECT_PATH: frontend
+      steps:
+        - uses: actions/checkout@v2
+        - uses: superfly/flyctl-actions@1.1
+          with:
+            args: "deploy"
