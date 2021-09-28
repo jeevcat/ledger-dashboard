@@ -34,8 +34,8 @@ rust_decimal = { version ="1", features = ["serde-float"] }
 regex = "1"
 handlebars = "4"
 
-mongodb = "1.2"
-bson = "1.2"
+mongodb = "2"
+bson = "2"
 
 git2 = "0.13"
 base64 = "0.13"

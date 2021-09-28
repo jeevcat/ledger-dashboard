@@ -77,9 +77,9 @@ impl Database {
 
         let client = Client::with_options(options)?;
         let database = client.database("ledger");
-        let rules = database.collection_with_type::<Rule>("rules");
-        let authentication = database.collection_with_type::<TokenData>("auth");
-        let balances = database.collection_with_type::<Balance>("balances");
+        let rules = database.collection::<Rule>("rules");
+        let authentication = database.collection::<TokenData>("auth");
+        let balances = database.collection::<Balance>("balances");
 
         info!("Connected to MongoDB! This took {:?}", start.elapsed());
 
@@ -128,14 +128,14 @@ impl Database {
     pub async fn get_rule(&self, rule_id: &str) -> Result<Option<Rule>> {
         Ok(self
             .rules
-            .find_one(doc!["_id": ObjectId::with_string(rule_id)?], None)
+            .find_one(doc!["_id": ObjectId::parse_str(rule_id)?], None)
             .await?)
     }
 
     pub async fn delete_rule(&self, rule_id: &str) -> Result<DeleteResult> {
         Ok(self
             .rules
-            .delete_one(doc!["_id": ObjectId::with_string(rule_id)?], None)
+            .delete_one(doc!["_id": ObjectId::parse_str(rule_id)?], None)
             .await?)
     }
 
@@ -188,7 +188,7 @@ impl Database {
         let result = collection.insert_many(docs, options).await;
         // Swallow BulkWriteErrors as these are thrown when duplicate keys exist
         if let Err(e) = &result {
-            if matches!(*e.kind, mongodb::error::ErrorKind::BulkWriteError(_)) {
+            if matches!(*e.kind, mongodb::error::ErrorKind::BulkWrite(_)) {
                 return Ok(());
             }
         }
