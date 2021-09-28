@@ -1,13 +1,12 @@
 use std::time::Duration;
 
-use actix::clock::delay_for;
-use actix_web::web::Buf;
+use actix::clock::sleep;
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use log::info;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use serde_xml_rs::from_reader;
+use serde_xml_rs::from_str;
 
 use crate::{
     config,
@@ -209,19 +208,18 @@ async fn retried_request<'de, T: Deserialize<'de>>(url: &str) -> T {
     let mut retries = MAX_RETRIES;
     let mut wait = FIRST_RETRY_DELAY;
     loop {
-        let text = reqwest::get(url).await.unwrap().bytes().await.unwrap();
-        let bytes = text.bytes();
-        if let Ok(already_available) = from_reader(bytes) {
+        let text = reqwest::get(url).await.unwrap().text().await.unwrap();
+        if let Ok(already_available) = from_str(&text) {
             return already_available;
         }
-        let response: FlexStatatementStatusResponse = from_reader(bytes).unwrap();
+        let response: FlexStatatementStatusResponse = from_str(&text).unwrap();
         match response.status {
-            FlexStatementStatus::Success => return from_reader(bytes).unwrap(),
+            FlexStatementStatus::Success => return from_str(&text).unwrap(),
             _ => {
                 if retries > 0 {
                     info!("Flex not ready yet. Waiting {} sec...", wait);
                     retries -= 1;
-                    delay_for(Duration::from_secs(wait)).await;
+                    sleep(Duration::from_secs(wait)).await;
                     wait *= 2;
                 } else {
                     panic!(
