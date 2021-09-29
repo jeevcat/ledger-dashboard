@@ -3,12 +3,15 @@ import { Button, Form, Grid, Header, Label, Segment } from "semantic-ui-react";
 import { getDirtyJournalFiles, saveJournal } from "../../Utils/BackendRequester";
 import { DirectoryListing } from "./DirectoryListing";
 
+const nameKey = "save_name";
+const emailKey = "save_email";
+
 interface Props {}
 
 export const Save: React.FC<Props> = () => {
   const [message, setMessage] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(localStorage.getItem(nameKey) ?? "");
+  const [email, setEmail] = useState(localStorage.getItem(emailKey) ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [dirtyFiles, setDirtyFiles] = useState<string[]>([]);
@@ -28,6 +31,8 @@ export const Save: React.FC<Props> = () => {
     e.preventDefault();
     if (message) {
       setLoading(true);
+      localStorage.setItem(nameKey, name);
+      localStorage.setItem(emailKey, email);
       saveJournal({ commitMsg: message, name, email }).then(updateDirtyFiles);
     } else {
       setError("Commit message must not be empty.");
