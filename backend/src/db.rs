@@ -210,10 +210,10 @@ impl Database {
 
     pub async fn cache_balance(&self, account_id: &str, balance: Vec<RealBalance>) -> Result<()> {
         let options = UpdateOptions::builder().upsert(true).build();
-        let update = UpdateModifications::Document(bson::to_document(&Balance {
+        let update = UpdateModifications::Document(doc!["$set": bson::to_document(&Balance {
             account_id: account_id.to_string(),
             balance,
-        })?);
+        })?]);
         self.balances
             .update_one(doc!["_id": account_id], update, options)
             .await?;
