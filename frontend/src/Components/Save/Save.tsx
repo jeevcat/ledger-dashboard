@@ -9,6 +9,8 @@ const emailKey = "save_email";
 interface Props {}
 
 export const Save: React.FC<Props> = () => {
+  console.log(localStorage.getItem(nameKey));
+
   const [message, setMessage] = useState("");
   const [name, setName] = useState(localStorage.getItem(nameKey) ?? "");
   const [email, setEmail] = useState(localStorage.getItem(emailKey) ?? "");
@@ -67,6 +69,7 @@ export const Save: React.FC<Props> = () => {
                 onChange={(e) => {
                   setName(e.target.value);
                 }}
+                value={name}
               />
             </Form.Field>
             <Form.Field>
@@ -76,6 +79,7 @@ export const Save: React.FC<Props> = () => {
                 onChange={(e) => {
                   setEmail(e.target.value);
                 }}
+                value={email}
               />
             </Form.Field>
             <DirectoryListing paths={dirtyFiles} />
