@@ -70,7 +70,6 @@ pub struct Amount {
     aprice: Option<Box<Price>>,
     acommodity: String,
     aquantity: Quantity,
-    aismultiplier: bool,
     astyle: AmountStyle,
 }
 
@@ -83,7 +82,6 @@ impl Amount {
         Self {
             acommodity: commodity.to_string(),
             aquantity: quantity.into(),
-            aismultiplier: false,
             astyle: AmountStyle {
                 ascommodityside: String::from("R"),
                 ascommodityspaced: true,
@@ -137,10 +135,11 @@ impl Posting {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "tag", content = "contents")]
-enum SourcePos {
-    GenericSourcePos(String, i32, i32),
-    JournalSourcePos(String, (i32, i32)),
+#[serde(rename_all = "camelCase")]
+struct SourcePos {
+    source_name: String,
+    source_line: u32,
+    source_column: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +154,7 @@ pub struct HledgerTransaction {
     tdate2: Option<NaiveDate>,
     tstatus: String,
     tindex: i32,
-    tsourcepos: SourcePos,
+    tsourcepos: (SourcePos, SourcePos),
 }
 
 impl HledgerTransaction {
@@ -171,7 +170,18 @@ impl HledgerTransaction {
             tdate2: None,
             tstatus: String::from("Unmarked"),
             tindex: 1,
-            tsourcepos: SourcePos::GenericSourcePos(String::new(), 1, 1),
+            tsourcepos: (
+                SourcePos {
+                    source_name: String::new(),
+                    source_line: 1,
+                    source_column: 1,
+                },
+                SourcePos {
+                    source_name: String::new(),
+                    source_line: 1,
+                    source_column: 1,
+                },
+            ),
         }
     }
 
@@ -274,7 +284,7 @@ fn get_uuid_from_tags(tags: &[Vec<String>]) -> Option<&str> {
 mod tests {
     use rust_decimal::{prelude::FromPrimitive, Decimal};
 
-    use super::{Amount, Quantity};
+    use super::{Amount, HledgerTransaction, Quantity};
     use crate::model::hledger_transaction::Precision;
 
     #[test]
@@ -293,5 +303,92 @@ mod tests {
             Precision::Precision(p) => assert_eq!(p, 4),
             Precision::NaturalPrecision => panic!(),
         }
+    }
+
+    #[test]
+    fn deserialize() {
+        let json = r#"{
+    "tcomment": "uuid:1234\n",
+    "tstatus": "Unmarked",
+    "ttags": [["uuid", "1234"]],
+    "tprecedingcomment": "",
+    "tpostings": [
+      {
+        "pdate": null,
+        "poriginal": null,
+        "ptags": [],
+        "paccount": "Assets:Cash:N26",
+        "pdate2": null,
+        "ptype": "RegularPosting",
+        "pbalanceassertion": null,
+        "pstatus": "Unmarked",
+        "pamount": [
+          {
+            "aprice": null,
+            "acommodity": "EUR",
+            "astyle": {
+              "asprecision": 2,
+              "asdecimalpoint": ".",
+              "ascommodityspaced": true,
+              "asdigitgroups": null,
+              "ascommodityside": "R"
+            },
+            "aquantity": { "floatingPoint": -3.57, "decimalPlaces": 2, "decimalMantissa": -357 }
+          }
+        ],
+        "ptransaction_": "1",
+        "pcomment": ""
+      },
+      {
+        "pdate": null,
+        "poriginal": null,
+        "ptags": [],
+        "paccount": "Expenses:Personal:Food:Groceries",
+        "pdate2": null,
+        "ptype": "RegularPosting",
+        "pbalanceassertion": null,
+        "pstatus": "Unmarked",
+        "pamount": [
+          {
+            "aprice": null,
+            "acommodity": "EUR",
+            "astyle": {
+              "asprecision": 2,
+              "asdecimalpoint": ".",
+              "ascommodityspaced": true,
+              "asdigitgroups": null,
+              "ascommodityside": "R"
+            },
+            "aquantity": { "floatingPoint": 3.57, "decimalPlaces": 2, "decimalMantissa": 357 }
+          }
+        ],
+        "ptransaction_": "1",
+        "pcomment": ""
+      }
+    ],
+    "tcode": "",
+    "tdate": "2020-01-02",
+    "tsourcepos": [
+      {
+        "sourceLine": 1,
+        "sourceName": "abc.ledger",
+        "sourceColumn": 1
+      },
+      {
+        "sourceLine": 4,
+        "sourceName": "abc.ledger",
+        "sourceColumn": 1
+      }
+    ],
+    "tindex": 1,
+    "tdescription": "My Groceries",
+    "tdate2": null
+}"#;
+
+        let t: HledgerTransaction = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            t.get_amount(None, "Groceries").unwrap(),
+            Decimal::from_f32(3.57).unwrap()
+        );
     }
 }
