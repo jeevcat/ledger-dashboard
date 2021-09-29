@@ -7,7 +7,7 @@ import RulesTable from "./RulesTable";
 
 interface Props {}
 
-type RuleErrors = { [rule: number]: string | undefined };
+type RuleErrors = { [rule: string]: string | undefined };
 
 const Rules: React.FC<Props> = () => {
   const [isLoadingRules, setIsLoadingRules] = useState(false);
@@ -19,7 +19,7 @@ const Rules: React.FC<Props> = () => {
   const handleRuleSave = async (rule: Rule): Promise<boolean> => {
     return setRule(importAccount, rule).then((error) => {
       if (error) {
-        setErrors((prevErrors) => ({ ...prevErrors, [rule.id]: error }));
+        setErrors((prevErrors) => ({ ...prevErrors, [rule._id?.$oid ?? "ERROR"]: error }));
         return true;
       } else {
         fetchRules();
@@ -36,7 +36,6 @@ const Rules: React.FC<Props> = () => {
 
   const handleRuleNew = () => {
     const rule: Rule = {
-      id: 0,
       priority: 100,
       importerId: importAccount.id,
       ruleName: "NEW RULE",

@@ -36,7 +36,7 @@ export const getRules = (account: ImportAccount): Promise<Rule[]> => get(`rules/
 
 export const setRule = (account: ImportAccount, rule: Rule): Promise<any> => post(`rules/${account.id}`, rule);
 
-export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule.id}`);
+export const deleteRule = (rule: Rule): Promise<void> => del(`rule/${rule._id?.$oid}`);
 
 export const getAccounts = (): Promise<string[]> => get("accounts");
 

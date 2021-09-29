@@ -58,7 +58,6 @@ export const IncomeStatementPlot: React.FC<Props> = ({ startDate }) => {
   const [cursorIndex, setCursorIndex] = useState<number | undefined>();
   useEffect(() => {
     getIncomeStatement(startDate).then((is) => {
-      console.log(is);
       setIncomeStatement(is);
     });
   }, [startDate]);

@@ -3,7 +3,7 @@ import { Container, Table } from "semantic-ui-react";
 import { Rule } from "../../Models/Rule";
 import RuleComponent from "./Rule";
 
-type RuleErrors = { [rule: number]: string | undefined };
+type RuleErrors = { [rule: string]: string | undefined };
 
 interface Props {
   onSetRuleRequested: (rule: Rule) => Promise<boolean>;
@@ -49,7 +49,7 @@ const RulesTable: React.FC<Props> = ({ onSetRuleRequested, onDeleteRuleRequested
             <RuleComponent
               key={index}
               rule={r}
-              error={errors[r.id]}
+              error={errors[r._id?.$oid ?? "ERROR"]}
               onSet={onSetRuleRequested}
               onDelete={onDeleteRuleRequested}
             />

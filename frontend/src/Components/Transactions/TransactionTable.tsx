@@ -67,9 +67,9 @@ export const TransactionTable: React.FC<Props> = ({
         }
       }
     }
-    if (sortedColumn === "rule" && "rule" in a && "rule" in b && a.rule && b.rule) {
-      const valA = a.rule.id;
-      const valB = b.rule.id;
+    if (sortedColumn === "rule" && "rule" in a && "rule" in b && a.rule?._id && b.rule?._id) {
+      const valA = a.rule._id?.$oid;
+      const valB = b.rule._id?.$oid;
       return sortCompareBase(valA, valB);
     }
     if (sortedColumn === "errors" && "errors" in a && "errors" in b && a.errors && b.errors) {

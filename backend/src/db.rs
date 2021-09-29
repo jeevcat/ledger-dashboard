@@ -97,7 +97,7 @@ impl Database {
 
     pub async fn create_or_update_rule(&self, rule: Rule) -> Result<UpdateResult> {
         let opts = UpdateOptions::builder().upsert(true).build();
-        let update = UpdateModifications::Document(bson::to_document(&rule)?);
+        let update = make_update(&rule)?;
         let result = self
             .rules
             .update_one(
@@ -210,13 +210,19 @@ impl Database {
 
     pub async fn cache_balance(&self, account_id: &str, balance: Vec<RealBalance>) -> Result<()> {
         let options = UpdateOptions::builder().upsert(true).build();
-        let update = UpdateModifications::Document(doc!["$set": bson::to_document(&Balance {
+        let update = make_update(&Balance {
             account_id: account_id.to_string(),
             balance,
-        })?]);
+        })?;
         self.balances
             .update_one(doc!["_id": account_id], update, options)
             .await?;
         Ok(())
     }
+}
+
+fn make_update<T: Serialize>(data: &T) -> Result<UpdateModifications> {
+    Ok(UpdateModifications::Document(
+        doc!["$set": bson::to_document(data)?],
+    ))
 }

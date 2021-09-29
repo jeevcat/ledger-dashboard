@@ -1,5 +1,7 @@
 export interface Rule {
-  id: number;
+  _id?: {
+    $oid: string;
+  };
   priority: number;
   importerId: string;
   ruleName: string;

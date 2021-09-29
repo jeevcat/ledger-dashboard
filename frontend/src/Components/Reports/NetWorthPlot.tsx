@@ -63,7 +63,6 @@ export const NetWorthPlot: React.FC<Props> = ({ startDate }) => {
   const [netWorth, setNetWorth] = useState<AlignedData | null>(null);
   useEffect(() => {
     getNetWorth(startDate).then((report) => {
-      console.log(report);
       setNetWorth(report);
     });
   }, [startDate]);
